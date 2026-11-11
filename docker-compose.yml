@@ -1,0 +1,19 @@
+# EduAssess on a server that already runs Docker and has PostgreSQL installed on the host (not in Docker).
+# Usage: cp .env.production.example .env.production  (fill it in), then: docker compose up -d --build
+services:
+  eduassess:
+    build: .
+    image: eduassess:latest
+    container_name: eduassess
+    restart: unless-stopped
+    env_file: .env.production
+    ports:
+      # Bound to localhost only: the reverse proxy on this server (nginx, Caddy, Traefik...) publishes it.
+      # Change the left number if 3001 is already used by another service.
+      - "127.0.0.1:${EDUASSESS_PORT:-3001}:3001"
+    extra_hosts:
+      # Lets the container reach PostgreSQL running on the Ubuntu host as "host.docker.internal".
+      - "host.docker.internal:host-gateway"
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

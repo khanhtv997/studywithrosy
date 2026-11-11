@@ -1,0 +1,5 @@
+import { z } from 'zod';
+export const ocrSchema = z.object({ rawText: z.string().nullish(), imageBase64: z.string().nullish(), mimeType: z.string().regex(/^(image\/[\w.+-]+|application\/pdf|text\/plain|application\/vnd\.openxmlformats-officedocument\.wordprocessingml\.document)$/, 'Only images, PDF, Word (.docx) and text files are supported').nullish(), level: z.enum(['THCS', 'THPT']).nullish(), examTitle: z.string().nullish(), gradeLevel: z.string().nullish() })
+  .refine(x => Boolean(x.rawText?.trim() || x.imageBase64), 'Text or image is required');
+export const feedbackSchema = z.object({ studentName: z.string().optional(), assessmentTitle: z.string().optional(), score: z.number().min(0).max(10), weakQuestions: z.array(z.object({ grammarTopic: z.string().optional() }).passthrough()).default([]) });
+export const analysisSchema = z.object({ assessmentTitle: z.string().optional(), avgScore: z.number().min(0).max(10), totalStudents: z.number().nonnegative(), weakTopics: z.array(z.object({ topic: z.string().optional() }).passthrough()).default([]), topWrongQuestions: z.array(z.object({ text: z.string().optional() }).passthrough()).default([]) });

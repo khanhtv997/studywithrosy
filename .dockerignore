@@ -1,0 +1,18 @@
+# Keep the build context small and free of secrets.
+node_modules
+dist
+data
+coverage
+.git
+.env
+.env.*
+!.env.example
+!.env.production.example
+*.log
+.playwright-cli
+.aistudio
+.agents
+.claude
+.vscode
+.idea
+eduassess_logo_icon.jpg

@@ -1,0 +1,6 @@
+{
+  "name": "EduAssess - Nền tảng Giao bài & Khảo thí Tiếng Anh Thông Minh",
+  "description": "Hệ thống quản lý lớp học, OCR bóc tách đề thi tiếng Anh thông minh, giao bài tập về nhà & bài kiểm tra, chấm điểm tự động và phê duyệt nhận xét chuyên sâu cho giáo viên cấp 2 trở lên.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
