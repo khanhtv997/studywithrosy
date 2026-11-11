@@ -102,6 +102,7 @@ const en: Record<string, string> = {
   'Khoá đã hết hạn mức hoặc bị giới hạn tốc độ.': 'The key is out of quota or rate limited.',
   'Khoá không hợp lệ hoặc không có quyền dùng Gemini.': 'The key is invalid or not allowed to use Gemini.',
   'Không gọi được model nào.': 'No model could be reached.',
+  'Không giải mã được khoá đã lưu (secret mã hoá trên server khác lúc lưu). Hãy bấm sửa và dán lại khoá.': 'The saved key cannot be decrypted (it was saved with a different encryption secret). Edit it and paste the key again.',
   'PASSWORD_CHANGE_REQUIRED': 'Please change your password to continue',
 };
 

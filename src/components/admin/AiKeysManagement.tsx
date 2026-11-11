@@ -15,6 +15,8 @@ function keyStates(keys: AiApiKey[]): Map<string, KeyState> {
   let currentFound = false;
   return new Map(keys.map(key => {
     if (!key.active) return [key.id, 'off'];
+    // Saved with another encryption secret: unusable until the key is entered again.
+    if (key.lastError?.startsWith('Không giải mã được')) return [key.id, 'error'];
     if (key.cooldownUntil && new Date(key.cooldownUntil).getTime() > now) return [key.id, key.lastError?.startsWith('Khoá bị từ chối') ? 'error' : 'resting'];
     if (!currentFound) { currentFound = true; return [key.id, 'current']; }
     return [key.id, 'standby'];
@@ -163,7 +165,7 @@ export function AiKeysManagement() {
                 <span>{t('Lần cuối: {time}', { time: formatTime(key.lastUsedAt, locale) })}</span>
                 {state === 'resting' && key.cooldownUntil && <span className="font-semibold text-amber-700">{t('Thử lại lúc {time}', { time: formatTime(key.cooldownUntil, locale) })}</span>}
               </div>
-              {key.lastError && (state === 'resting' || state === 'error') && <p className="mt-1 line-clamp-2 text-xs text-rose-700" title={key.lastError}>{key.lastError}</p>}
+              {key.lastError && (state === 'resting' || state === 'error') && <p className="mt-1 line-clamp-2 text-xs text-rose-700" title={t(key.lastError)}>{t(key.lastError)}</p>}
               {result && <p className={`mt-1 flex items-center gap-1.5 text-xs font-semibold ${result.ok ? 'text-emerald-700' : 'text-rose-700'}`}>
                 {result.ok ? <CheckCircle2 size={14} aria-hidden="true" /> : <XCircle size={14} aria-hidden="true" />}{result.message}
               </p>}

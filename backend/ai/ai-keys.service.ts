@@ -132,7 +132,12 @@ export class AiKeysService {
   /** Calls the provider with this key and records the outcome like a real request would. */
   async test(id: string, models: string[]): Promise<AiKeyTestResult> {
     const row = await this.require(id);
-    const client = this.clientFor(row);
+    let client: GoogleGenAI;
+    try { client = this.clientFor(row); }
+    catch {
+      await this.markUnreadable(row);
+      return { ok: false, message: UNREADABLE };
+    }
     let lastError: unknown = null;
     for (const model of models) {
       try {
@@ -170,9 +175,19 @@ export class AiKeysService {
     for (const row of await this.rows()) {
       if (!row.active || (row.cooldownUntil && new Date(row.cooldownUntil).getTime() > now)) continue;
       try { usable.push({ id: row.id, label: row.label, client: this.clientFor(row) }); }
-      catch { this.logger.warn(`Cannot decrypt AI key ${row.label}; was AUTH_JWT_SECRET changed?`); }
+      catch { await this.markUnreadable(row); }
     }
     return usable;
+  }
+
+  /**
+   * The stored key was encrypted with another secret (AI_KEYS_SECRET / AUTH_JWT_SECRET changed, or the
+   * database came from another server). It cannot be recovered; the admin has to paste the key again.
+   */
+  private async markUnreadable(row: KeyRow) {
+    this.logger.warn(`Cannot decrypt AI key "${row.label}": it was encrypted with a different AI_KEYS_SECRET. Enter the key again.`);
+    if (row.lastError === UNREADABLE) return;
+    await this.db.query('UPDATE ai_api_keys SET last_error = $1, last_error_at = now() WHERE id = $2', [UNREADABLE, row.id]);
   }
 
   async recordSuccess(id: string) {
@@ -185,6 +200,9 @@ export class AiKeysService {
     await this.db.query('UPDATE ai_api_keys SET cooldown_until = $1, last_error = $2, last_error_at = now() WHERE id = $3', [until, message, id]);
   }
 }
+
+/** Shown on the key and returned by the test when the stored key cannot be decrypted. */
+const UNREADABLE = 'Không giải mã được khoá đã lưu (secret mã hoá trên server khác lúc lưu). Hãy bấm sửa và dán lại khoá.';
 
 function shortError(error: unknown) {
   return String((error as { message?: string })?.message ?? error).replace(/\s+/g, ' ').slice(0, 180);
