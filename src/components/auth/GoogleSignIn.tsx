@@ -94,6 +94,6 @@ export function GoogleSignIn({ onCredential, onError, disabled, hint, text = 'si
   return <div className="login-google">
     <div className="login-divider"><span>{t('hoặc')}</span></div>
     <div ref={box} className={`login-google-button ${disabled ? 'is-disabled' : ''}`} aria-busy={disabled} />
-    <p className="login-google-hint">{hint ?? t('Giáo viên mới: đăng nhập bằng Google để tạo tài khoản. Quản trị viên sẽ duyệt trước khi bạn sử dụng.')}</p>
+    {/* <p className="login-google-hint">{hint ?? t('Giáo viên mới: đăng nhập bằng Google để tạo tài khoản. Quản trị viên sẽ duyệt trước khi bạn sử dụng.')}</p> */}
   </div>;
 }

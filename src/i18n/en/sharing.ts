@@ -187,7 +187,7 @@ const en: Record<string, string> = {
   'Cập nhật ngay': 'Update now',
   'Để sau': 'Later',
   'Đã có tài khoản?': 'Already have an account?',
-  'Giáo viên chưa có tài khoản?': 'Teacher without an account?',
+  'Bạn chưa có tài khoản?': 'Do you not have an account?',
   'Giáo viên mới: đăng nhập bằng Google để tạo tài khoản. Quản trị viên sẽ duyệt trước khi bạn sử dụng.':
     'New teacher? Sign in with Google to create an account. An administrator approves it before you can use the app.',
   'Không tải được nút đăng nhập Google. Hãy kiểm tra mạng và tải lại trang.': 'The Google sign-in button did not load. Check your connection and reload the page.',

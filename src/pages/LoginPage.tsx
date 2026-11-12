@@ -110,12 +110,12 @@ export const LoginPage: React.FC<{ mode?: 'login' | 'register' }> = ({ mode = 'l
           </> : <>
           <form onSubmit={submit} className="login-form">
             {error && <div role="alert" className="login-error">{error}</div>}
-            <label className="login-field"><span>{t('Email hoặc tên đăng nhập')}</span><span className="login-input-wrap"><Mail size={19} aria-hidden="true"/><input type="text" required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder={t('tenban@example.com hoặc giaovien')} value={email} onChange={e => setEmail(e.target.value)} disabled={busy} /></span></label>
+            <label className="login-field"><span>{t('Email hoặc tên đăng nhập')}</span><span className="login-input-wrap"><Mail size={19} aria-hidden="true"/><input type="text" required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder={t('Nhập email hoặc tên đăng nhập')} value={email} onChange={e => setEmail(e.target.value)} disabled={busy} /></span></label>
             <label className="login-field"><span>{t('Mật khẩu')}</span><span className="login-input-wrap"><LockKeyhole size={19} aria-hidden="true"/><input type={showPassword ? 'text' : 'password'} required autoComplete="current-password" placeholder={t('Nhập mật khẩu của bạn')} value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /><button type="button" className="login-password-toggle" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? t('Ẩn mật khẩu') : t('Hiện mật khẩu')} aria-pressed={showPassword}>{showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}</button></span></label>
             <button className="login-submit" type="submit" disabled={busy}><span>{busy ? t('Đang đăng nhập...') : t('Đăng nhập')}</span>{busy ? <span className="login-spinner" aria-hidden="true"/> : <ArrowRight size={19} aria-hidden="true"/>}</button>
           </form>
           <GoogleSignIn onCredential={google} onError={setError} disabled={busy} />
-          <p className="login-switch">{t('Giáo viên chưa có tài khoản?')} <Link to="/register">{t('Đăng ký')}</Link></p>
+          <p className="login-switch">{t('Bạn chưa có tài khoản?')} <Link to="/register">{t('Đăng ký')}</Link></p>
           </>}
           <p className="login-security"><ShieldCheck size={16} aria-hidden="true"/> {t('Tài khoản của bạn được bảo vệ')}</p>
         </div>
