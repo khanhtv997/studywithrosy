@@ -1,10 +1,20 @@
-/* ---------- Language switcher ---------- */
-.lang-switch { display: inline-flex; align-items: center; gap: 2px; height: 36px; padding: 3px; border: 1px solid #e5e7ef; border-radius: 10px; background: #f8f9fc; }
-.lang-switch-icon { margin: 0 4px 0 6px; color: #8d93aa; }
-.lang-switch button { min-width: 34px; height: 28px; padding: 0 8px; border: 0; border-radius: 7px; color: #6b728b; background: transparent; font: inherit; font-size: 11.5px; font-weight: 800; letter-spacing: .03em; cursor: pointer; transition: background-color 150ms ease, color 150ms ease; }
-.lang-switch button:hover:not(.is-active) { color: #3f3a86; background: #eeedf8; }
-.lang-switch button.is-active { color: #fff; background: var(--app-accent, #625bc0); }
-@media (max-width: 520px) { .app-header-lang .lang-switch-icon { display: none; } }
+/* ---------- Language dropdown with flags ---------- */
+.lang-switch { position: relative; display: inline-flex; }
+.lang-switch-button { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 9px 0 10px; border: 1px solid #e5e7ef; border-radius: 10px; color: #3d4460; background: #f8f9fc; font: inherit; font-size: 12px; font-weight: 800; letter-spacing: .03em; cursor: pointer; transition: background-color 150ms ease, border-color 150ms ease; }
+.lang-switch-button:hover, .lang-switch-button.is-open { border-color: #d9d6f3; background: #f0eefc; }
+.lang-switch-button:focus-visible, .lang-menu-item:focus-visible { outline: 2px solid var(--app-accent, #625bc0); outline-offset: 2px; }
+.lang-switch-chevron { color: #8d93aa; transition: transform 150ms ease; }
+.lang-switch-button.is-open .lang-switch-chevron { transform: rotate(180deg); }
+.lang-flag { flex: none; width: 21px; height: 14px; border-radius: 3px; box-shadow: 0 0 0 1px rgba(20, 24, 50, .12); overflow: hidden; }
 
-.lang-switch button:focus-visible { outline: 2px solid var(--app-accent, #625bc0); outline-offset: 2px; }
-.login-lang { position: fixed; z-index: 5; top: 16px; right: 16px; background: rgba(255, 255, 255, .92); box-shadow: 0 2px 8px rgba(30, 32, 60, .08); }
+.lang-menu { position: absolute; z-index: 60; top: calc(100% + 6px); right: 0; display: grid; min-width: 170px; padding: 6px; border: 1px solid #e6e8f1; border-radius: 12px; background: #fff; box-shadow: 0 14px 34px rgba(35, 40, 80, .15); animation: lang-menu-in 120ms ease-out both; }
+.lang-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 0 10px; border: 0; border-radius: 8px; color: #3d4460; background: transparent; font: inherit; font-size: 13.5px; font-weight: 600; text-align: left; white-space: nowrap; cursor: pointer; }
+.lang-menu-item:hover, .lang-menu-item:focus-visible { background: #f2f1fb; }
+.lang-menu-item.is-active { color: #3f3a86; font-weight: 800; }
+.lang-menu-check { margin-left: auto; color: var(--app-accent, #625bc0); }
+@keyframes lang-menu-in { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .lang-menu, .lang-switch-chevron { animation: none; transition: none; } }
+@media (max-width: 520px) { .app-header-lang .lang-switch-code { display: none; } }
+
+.login-lang { position: fixed; z-index: 5; top: 16px; right: 16px; }
+.login-lang .lang-switch-button { background: rgba(255, 255, 255, .92); box-shadow: 0 2px 8px rgba(30, 32, 60, .08); }
