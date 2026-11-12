@@ -1,0 +1,14 @@
+/* Row action menu ("⋯"), drawn above everything with a fixed position. */
+.row-menu { position: fixed; z-index: 90; display: grid; padding: 6px; border: 1px solid #e6e8f1; border-radius: 14px; background: #fff; box-shadow: 0 16px 40px rgba(35, 40, 80, .16); animation: row-menu-in 120ms ease-out both; }
+.row-menu-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; padding: 0 10px; border: 0; border-radius: 9px; color: #3d4460; background: transparent; font: inherit; font-size: 13.5px; font-weight: 600; text-align: left; white-space: nowrap; cursor: pointer; }
+.row-menu-item span { overflow: hidden; text-overflow: ellipsis; }
+.row-menu-item svg { flex: none; color: #7a8099; }
+.row-menu-item:hover:not(:disabled), .row-menu-item:focus-visible { outline: none; background: #f2f1fb; color: #2b2f6b; }
+.row-menu-item:hover:not(:disabled) svg, .row-menu-item:focus-visible svg { color: #5a51b7; }
+.row-menu-item.is-danger, .row-menu-item.is-danger svg { color: #c4364f; }
+.row-menu-item.is-danger:hover:not(:disabled), .row-menu-item.is-danger:focus-visible { background: #fff1f3; color: #c4364f; }
+.row-menu-item:disabled { opacity: .45; cursor: not-allowed; }
+.row-menu-sep { height: 1px; margin: 5px 4px; background: #eceef5; }
+.icon-btn.is-active { color: #4b44a3; background: #f0eefc; }
+@keyframes row-menu-in { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .row-menu { animation: none; } }

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { RowMenu } from '../ui/RowMenu';
 import { BarChart3, ClipboardCheck, Copy, Eye, Highlighter, FileSpreadsheet, FileText, Inbox, Lock, Pencil, Plus, School, Search, Send, Share2, Sparkles, Trash2 } from 'lucide-react';
 import { AssignClassesModal } from './AssignClassesModal';
 import { ShareAssessmentModal } from './ShareAssessmentModal';
@@ -159,18 +160,24 @@ export const AssessmentList: React.FC<AssessmentListProps> = ({ onOpenOcr, onSel
                   </td>
                   <td>
                     <div className="flex items-center justify-end gap-0.5">
-                      <button type="button" className="icon-btn" onClick={() => onPreview(item.id)} aria-label={t('Xem trước: {title}', { title: item.title })} title={t('Xem trước như học sinh')}><Eye size={16} aria-hidden="true" /></button>
-                      <button type="button" className="icon-btn" onClick={() => navigate(`/assessments/${encodeURIComponent(item.id)}/review`)} aria-label={t('Chữa đề: {title}', { title: item.title })} title={t('Chữa đề (highlight, ghi chú, hiện đáp án)')}><Highlighter size={16} aria-hidden="true" /></button>
                       <button type="button" className="icon-btn" onClick={() => onSelectAssessmentForGrading(item.id)} aria-label={t('Chấm bài: {title}', { title: item.title })} title={t('Chấm & duyệt bài')}><ClipboardCheck size={16} aria-hidden="true" /></button>
-                      <button type="button" className="icon-btn" onClick={() => onSelectAssessmentForAnalytics(item.id)} aria-label={t('Phân tích: {title}', { title: item.title })} title={t('Xem phân tích')}><BarChart3 size={16} aria-hidden="true" /></button>
-                      <button type="button" className="icon-btn" disabled={busyId === item.id} onClick={() => changeStatus(item)}
-                        aria-label={item.status === 'published' ? t('Đóng: {title}', { title: item.title }) : item.status === 'closed' ? t('Mở lại: {title}', { title: item.title }) : t('Giao: {title}', { title: item.title })}
-                        title={item.status === 'published' ? t('Đóng bài (học sinh không nộp được nữa)') : item.status === 'closed' ? t('Mở lại bài') : t('Giao bài cho học sinh')}>
-                        {item.status === 'published' ? <Lock size={16} aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
-                      </button>
-                      {canShare(item) && <button type="button" className="icon-btn" onClick={() => setSharing(item)} aria-label={t('Chia sẻ: {title}', { title: item.title })} title={t('Chia sẻ cho giáo viên khác')}><Share2 size={16} aria-hidden="true" /></button>}
-                      <button type="button" className="icon-btn icon-btn-danger" disabled={busyId === item.id || !canShare(item)} onClick={() => removeAssessment(item)}
-                        aria-label={t('Xóa {title}', { title: item.title })} title={t('Xóa bài')}><Trash2 size={16} aria-hidden="true" /></button>
+                      <button type="button" className="icon-btn" onClick={() => navigate(`/assessments/${encodeURIComponent(item.id)}/review`)} aria-label={t('Chữa đề: {title}', { title: item.title })} title={t('Chữa đề (highlight, ghi chú, hiện đáp án)')}><Highlighter size={16} aria-hidden="true" /></button>
+                      <RowMenu label={t('Thao tác khác: {title}', { title: item.title })} items={[
+                        { label: t('Xem trước như học sinh'), icon: <Eye size={16} aria-hidden="true" />, onSelect: () => onPreview(item.id) },
+                        { label: t('Xem phân tích'), icon: <BarChart3 size={16} aria-hidden="true" />, onSelect: () => onSelectAssessmentForAnalytics(item.id) },
+                        {
+                          label: item.status === 'published' ? t('Đóng bài') : item.status === 'closed' ? t('Mở lại bài') : t('Giao bài'),
+                          hint: item.status === 'published' ? t('Đóng bài (học sinh không nộp được nữa)') : item.status === 'closed' ? undefined : t('Giao bài cho học sinh'),
+                          icon: item.status === 'published' ? <Lock size={16} aria-hidden="true" /> : <Send size={16} aria-hidden="true" />,
+                          disabled: busyId === item.id, onSelect: () => changeStatus(item),
+                        },
+                        canShare(item) && { label: t('Chia sẻ'), hint: t('Chia sẻ cho giáo viên khác'), icon: <Share2 size={16} aria-hidden="true" />, onSelect: () => setSharing(item) },
+                        {
+                          label: t('Xóa bài'), icon: <Trash2 size={16} aria-hidden="true" />, danger: true, separated: true,
+                          disabled: busyId === item.id || !canShare(item), hint: canShare(item) ? undefined : t('Chỉ người tạo đề mới xoá được'),
+                          onSelect: () => removeAssessment(item),
+                        },
+                      ]} />
                     </div>
                   </td>
                 </tr>;
