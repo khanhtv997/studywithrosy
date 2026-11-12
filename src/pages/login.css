@@ -147,3 +147,20 @@
 .login-back { display: inline-flex; align-items: center; gap: 7px; margin-top: 4px; padding: 9px 16px; border: 1px solid #dcd9f2; border-radius: 999px; color: #4b44a3; background: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
 .login-back:hover { background: #f4f3fd; }
 .login-back:focus-visible { outline: 2px solid #625bc0; outline-offset: 2px; }
+
+/* Teacher sign-up. */
+.login-form-compact { gap: 14px; margin-top: 26px; }
+.login-form-compact .login-input-wrap { height: 46px; }
+.login-input-wrap.is-invalid { border-color: #f4a7b4; background: #fff8f9; }
+.login-input-wrap input[readonly] { color: #6b7088; }
+.login-field-error { color: #be123c; font-size: 11.5px; font-weight: 600; }
+.login-show-passwords { display: inline-flex; align-items: center; gap: 6px; justify-self: start; padding: 2px 4px; border: 0; color: #6b6fb0; background: none; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.login-switch { margin: 18px 0 0; color: #7d8299; font-size: 13px; text-align: center; }
+.login-switch a { color: #5a49c4; font-weight: 800; text-decoration: none; }
+.login-switch a:hover { text-decoration: underline; }
+.login-switch a:focus-visible, .login-show-passwords:focus-visible { outline: 2px solid #625bc0; outline-offset: 2px; border-radius: 4px; }
+.login-google-account { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; color: #4b5270; background: #f4f6fb; font-size: 12.5px; }
+.login-google-account svg { flex: none; color: #7a70c9; }
+.login-google-account strong { word-break: break-all; }
+a.login-back { text-decoration: none; }
+.login-back-center { justify-self: center; }

@@ -4,7 +4,7 @@ import type {
   AiApiKey, AiKeyTestResult, NotificationList, OcrExamResult, Role, StudentImportInput, StudentImportPreview, StudentImportResult, Student, Submission, UpdateAssessmentInput,
   AssessmentShareInfo, CopyAssessmentInput, SharedAssessmentSummary, SharedAssessmentView, StaffMember, UpdateClassInput,
   AssessmentAnalytics, AssessmentPage, ClassAnalytics, StudentPage, SubmissionPage, UserPage, AiSuggestion, AiSuggestionResult, ReviewAnnotations,
-  Approval, AuthConfig, GoogleLoginResult,
+  Approval, AuthConfig, GoogleLoginResult, GoogleProfileInput, RegisterInput, RegisterResult,
 } from '../types';
 
 export interface BootstrapData {
@@ -90,7 +90,8 @@ export const eduApi = {
   login: (email: string, password: string) => apiRequest<{ accessToken: string; user: AppUser }>('auth/login', 'POST', { email, password }),
   me: () => apiRequest<AppUser>('auth/me'),
   authConfig: () => apiRequest<AuthConfig>('auth/config'),
-  googleLogin: (credential: string) => apiRequest<GoogleLoginResult>('auth/google', 'POST', { credential }),
+  googleLogin: (credential: string, profile?: GoogleProfileInput) => apiRequest<GoogleLoginResult>('auth/google', 'POST', { credential, ...(profile ? { profile } : {}) }),
+  register: (data: RegisterInput) => apiRequest<RegisterResult>('auth/register', 'POST', data),
   changeOwnPassword: (currentPassword: string, newPassword: string) => apiRequest<AppUser>('auth/password', 'PATCH', { currentPassword, newPassword }),
 
   users: () => apiRequest<AppUser[]>('admin/users'),

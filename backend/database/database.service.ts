@@ -124,6 +124,9 @@ const migrations = [
   ALTER TABLE users ADD COLUMN avatar_url text;
   ALTER TABLE users ADD COLUMN approval text NOT NULL DEFAULT 'approved' CHECK (approval IN ('pending', 'approved', 'rejected'));
   CREATE INDEX idx_users_approval ON users(approval) WHERE approval <> 'approved';`,
+  // Teachers who sign up give a phone number and the school they teach at, for the admin to check.
+  `ALTER TABLE users ADD COLUMN phone text;
+  ALTER TABLE users ADD COLUMN school text;`,
 ];
 
 @Injectable()

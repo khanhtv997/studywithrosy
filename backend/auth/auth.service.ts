@@ -2,10 +2,10 @@ import { BadRequestException, ForbiddenException, Inject, Injectable, ServiceUna
 import { JwtService } from '@nestjs/jwt';
 import { compare } from 'bcryptjs';
 import { OAuth2Client } from 'google-auth-library';
-import type { AuthConfig, GoogleLoginResult } from '../../shared/types';
+import type { AuthConfig, GoogleLoginResult, RegisterResult } from '../../shared/types';
 import { validate } from '../common/validate';
 import { UsersService, type UserRecord } from '../users/users.service';
-import { googleLoginSchema, loginSchema } from './auth.dto';
+import { googleLoginSchema, googleProfileSchema, loginSchema, registerSchema } from './auth.dto';
 
 const googleClientId = () => process.env.GOOGLE_CLIENT_ID?.trim() || null;
 
@@ -29,11 +29,22 @@ export class AuthService {
     return this.session(user);
   }
 
-  /** Signs in with a Google ID token from the Google button; new people get a teacher account that waits for approval. */
+  /** A teacher signs up with email and password; the account waits for an admin's approval. */
+  async register(body: unknown): Promise<RegisterResult> {
+    const data = validate(registerSchema, body);
+    const user = await this.users.registerTeacher(data);
+    return { status: 'pending', name: user.name, email: user.email };
+  }
+
+  /**
+   * Signs in with a Google ID token from the Google button. A new person is first asked for their
+   * name, phone and school ("needs_profile"); sending the same token again with them creates a
+   * teacher account that waits for approval.
+   */
   async loginWithGoogle(body: unknown): Promise<GoogleLoginResult> {
     const clientId = googleClientId();
     if (!clientId) throw new ServiceUnavailableException('Google sign-in is not set up on this server');
-    const { credential } = validate(googleLoginSchema, body);
+    const { credential, profile: given } = validate(googleLoginSchema, body);
     this.google ??= new OAuth2Client(clientId);
     let payload;
     try { payload = (await this.google.verifyIdToken({ idToken: credential, audience: clientId })).getPayload(); }
@@ -41,7 +52,13 @@ export class AuthService {
     if (!payload?.sub || !payload.email) throw new UnauthorizedException('Google sign-in failed. Please try again.');
     if (!payload.email_verified) throw new BadRequestException('This Google account has no verified email address');
 
-    const user = await this.users.fromGoogle({ sub: payload.sub, email: payload.email, name: payload.name?.trim() || payload.email, picture: payload.picture ?? null });
+    const google = { sub: payload.sub, email: payload.email, name: payload.name?.trim() || payload.email, picture: payload.picture ?? null };
+    let user = await this.users.findForGoogle(google);
+    if (!user) {
+      if (given === undefined) return { status: 'needs_profile', name: google.name, email: google.email.toLowerCase() };
+      const profile = validate(googleProfileSchema, given);
+      user = await this.users.registerTeacher({ ...profile, email: google.email, google });
+    }
     if (!user.active) throw new UnauthorizedException('Account is disabled');
     if (user.approval !== 'approved') return { status: user.approval, name: user.name, email: user.email };
     return { status: 'ok', ...(await this.session(user)) };

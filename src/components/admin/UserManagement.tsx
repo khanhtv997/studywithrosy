@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Check, GraduationCap, Hourglass, KeyRound, Plus, Search, ShieldCheck, UserRoundCog, UsersRound, X } from 'lucide-react';
+import { Check, GraduationCap, Hourglass, KeyRound, Phone, Plus, School, Search, ShieldCheck, UserRoundCog, UsersRound, X } from 'lucide-react';
 import type { AppUser, Role, UserPage } from '../../types';
 import { eduApi } from '../../api/client';
 import { useApp } from '../../context/AppContext';
@@ -115,7 +115,7 @@ export const UserManagement: React.FC = () => {
             options={[{ value: 'all', label: t('Tất cả vai trò') }, ...roleOpts]} />
           <label className="search-field">
             <Search size={16} aria-hidden="true" />
-            <input type="search" aria-label={t('Tìm tài khoản')} placeholder={t('Tìm tên hoặc email...')} value={query} onChange={e => setQuery(e.target.value)} />
+            <input type="search" aria-label={t('Tìm tài khoản')} placeholder={t('Tìm tên, email, SĐT, trường...')} value={query} onChange={e => setQuery(e.target.value)} />
           </label>
         </div>
       </div>
@@ -126,7 +126,11 @@ export const UserManagement: React.FC = () => {
             <tbody>{pager.total === 0
               ? <tr><td colSpan={5} className="empty-cell"><UsersRound size={28} aria-hidden="true" /><span>{t('Không có tài khoản nào khớp với bộ lọc.')}</span></td></tr>
               : pager.pageItems.map(user => <tr key={user.id}>
-                <td><div className="font-bold text-slate-900">{user.name}</div><div className="text-[12px] text-slate-500">{user.email}{user.googleLinked && <span className="google-pill" title={t('Đăng nhập được bằng Google')}>Google</span>}</div></td>
+                <td><div className="font-bold text-slate-900">{user.name}</div><div className="text-[12px] text-slate-500">{user.email}{user.googleLinked && <span className="google-pill" title={t('Đăng nhập được bằng Google')}>Google</span>}</div>
+                  {(user.phone || user.school) && <div className="user-contact">
+                    {user.phone && <a href={`tel:${user.phone}`}><Phone size={12} aria-hidden="true" />{user.phone}</a>}
+                    {user.school && <span title={user.school}><School size={12} aria-hidden="true" />{user.school}</span>}
+                  </div>}</td>
                 <td><SelectField ariaLabel={t('Vai trò của {name}', { name: user.name })} disabled={busy || user.id === currentUser?.id} value={user.role} onValueChange={value => changeRole(user, value as Role)} options={roleOpts} compact className="w-32" /></td>
                 <td><SelectField ariaLabel={t('Học sinh của {name}', { name: user.name })} disabled={busy} value={user.studentId || ''} onValueChange={value => linkStudent(user, value)} options={studentOptions} placeholder={t('Chưa liên kết')} compact className="w-60" /></td>
                 <td>{user.approval !== 'approved' ? <div className="approval-cell">

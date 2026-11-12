@@ -34,8 +34,16 @@ export interface AppUser {
   /** Whether a Google account is linked (the user can sign in with Google). */
   googleLinked: boolean;
   avatarUrl: string | null;
+  /** Given when a teacher signs up (form or Google). */
+  phone: string | null;
+  school: string | null;
   createdAt: string;
 }
+
+/** A teacher signing up with email and password. */
+export interface RegisterInput { name: string; email: string; phone: string; school: string; password: string }
+/** What a new Google user adds before the account is created. */
+export interface GoogleProfileInput { name: string; phone: string; school: string }
 
 export type Approval = 'pending' | 'approved' | 'rejected';
 
@@ -45,7 +53,12 @@ export interface AuthConfig { googleClientId: string | null }
 /** Result of signing in with Google: a session, or why there is none yet. */
 export type GoogleLoginResult =
   | { status: 'ok'; accessToken: string; user: AppUser }
-  | { status: 'pending' | 'rejected'; name: string; email: string };
+  | { status: 'pending' | 'rejected'; name: string; email: string }
+  /** A new Google user: send the same credential again with phone and school to create the account. */
+  | { status: 'needs_profile'; name: string; email: string };
+
+/** Result of signing up: the account waits for an admin. */
+export interface RegisterResult { status: 'pending'; name: string; email: string }
 
 export interface Question {
   id: string;

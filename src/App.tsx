@@ -28,7 +28,7 @@ function AppLoading() {
   return <div className="app-loading-screen" role="status">{t('Đang tải EduPath...')}</div>;
 }
 
-function LoginRoute() {
+function LoginRoute({ mode = 'login' }: { mode?: 'login' | 'register' }) {
   const { currentUser, loading } = useApp();
   const location = useLocation();
   if (loading) return <AppLoading />;
@@ -36,7 +36,7 @@ function LoginRoute() {
     const from = (location.state as { from?: string } | null)?.from;
     return <Navigate to={from || homeFor(currentUser.role)} replace />;
   }
-  return <LoginPage />;
+  return <LoginPage mode={mode} />;
 }
 
 function RequireAuth() {
@@ -63,6 +63,7 @@ function HomeRedirect() {
 function AppRoutes() {
   return <Routes>
     <Route path="/login" element={<LoginRoute />} />
+    <Route path="/register" element={<LoginRoute mode="register" />} />
     <Route element={<RequireAuth />}>
       <Route element={<AppShell />}>
         <Route element={<RequireRole roles={['admin', 'teacher']} />}>

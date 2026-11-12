@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type {
   AppUser, Assessment, ClassRoom, CreateAssessmentInput, CreateClassInput, CreateStudentInput,
-  GoogleLoginResult, Role, Student, Submission, UpdateAssessmentInput,
+  GoogleLoginResult, GoogleProfileInput, Role, Student, Submission, UpdateAssessmentInput,
 } from '../types';
 import { authToken, eduApi, SESSION_EXPIRED_EVENT, TOKEN_KEY } from '../api/client';
 
 interface AppContextType {
   currentUser: AppUser | null; userRole: Role | null;
   login: (email: string, password: string) => Promise<void>; logout: () => void;
-  loginWithGoogle: (credential: string) => Promise<GoogleLoginResult>;
+  loginWithGoogle: (credential: string, profile?: GoogleProfileInput) => Promise<GoogleLoginResult>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   currentStudentId: string; selectedClassId: string; setSelectedClassId: (id: string) => void;
   classes: ClassRoom[]; students: Student[]; assessments: Assessment[]; submissions: Submission[];
@@ -91,9 +91,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   /** Signs in with a Google credential; an account still waiting for approval gets no session. */
-  const loginWithGoogle = async (credential: string): Promise<GoogleLoginResult> => {
+  const loginWithGoogle = async (credential: string, profile?: GoogleProfileInput): Promise<GoogleLoginResult> => {
     setError(null);
-    const result = await eduApi.googleLogin(credential);
+    const result = await eduApi.googleLogin(credential, profile);
     if (result.status !== 'ok') return result;
     await startSession(result);
     return result;

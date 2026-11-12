@@ -41,6 +41,7 @@ const vi: Record<string, string> = {
   'This Google account has no verified email address': 'Tài khoản Google này chưa xác minh email',
   'This email is already linked to another Google account': 'Email này đã liên kết với một tài khoản Google khác',
   'You cannot change the approval of your own account': 'Bạn không thể tự duyệt tài khoản của chính mình',
+  'This email is already registered. Sign in instead.': 'Email này đã được đăng ký. Hãy đăng nhập.',
 };
 
 export default vi;

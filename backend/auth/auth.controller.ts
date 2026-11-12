@@ -10,6 +10,7 @@ export class AuthController {
   /** Whether Google sign-in is offered, and with which client ID (set on the server, so no rebuild is needed). */
   @Public() @Get('config') config() { return this.auth.config(); }
   @Public() @Post('google') google(@Body() body: unknown) { return this.auth.loginWithGoogle(body); }
+  @Public() @Post('register') register(@Body() body: unknown) { return this.auth.register(body); }
   @AllowPendingPasswordChange() @Get('me') me(@CurrentUser() user: PublicUser) { return user; }
   /** Any signed-in user changes their own password; required after an import or an admin reset. */
   @AllowPendingPasswordChange() @Patch('password') changePassword(@CurrentUser() user: PublicUser, @Body() body: unknown) {

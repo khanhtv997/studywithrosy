@@ -48,7 +48,7 @@ let onCredentialRef: (credential: string) => void = () => {};
  * Google's own "Continue with Google" button. Shows nothing when the server has no Google client ID.
  * The button is drawn by Google (their branding rules), in the app's language.
  */
-export function GoogleSignIn({ onCredential, onError, disabled }: { onCredential: (credential: string) => void; onError: (message: string) => void; disabled?: boolean }) {
+export function GoogleSignIn({ onCredential, onError, disabled, hint }: { onCredential: (credential: string) => void; onError: (message: string) => void; disabled?: boolean; hint?: string }) {
   const { lang, t } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const [clientId, setClientId] = useState<string | null | undefined>(undefined);
@@ -89,6 +89,6 @@ export function GoogleSignIn({ onCredential, onError, disabled }: { onCredential
   return <div className="login-google">
     <div className="login-divider"><span>{t('hoặc')}</span></div>
     <div ref={box} className={`login-google-button ${disabled ? 'is-disabled' : ''}`} aria-busy={disabled} />
-    <p className="login-google-hint">{t('Giáo viên mới: đăng nhập bằng Google để tạo tài khoản. Quản trị viên sẽ duyệt trước khi bạn sử dụng.')}</p>
+    <p className="login-google-hint">{hint ?? t('Giáo viên mới: đăng nhập bằng Google để tạo tài khoản. Quản trị viên sẽ duyệt trước khi bạn sử dụng.')}</p>
   </div>;
 }

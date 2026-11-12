@@ -158,9 +158,13 @@ Khi đó có thể bỏ mục `ports:`. Nhớ tăng giới hạn body (30 MB) v�
 3. Menu **Khoá API AI** → **Thêm khoá**: dán khoá Gemini lấy từ aistudio.google.com rồi bấm **Kiểm tra**.
 4. Tạo tài khoản giáo viên ở **Tài khoản**, tạo lớp, rồi nhập học sinh bằng Excel.
 
+### Giáo viên tự đăng ký
+
+Giáo viên mới vào `/register` (link **Đăng ký** ở trang đăng nhập), điền họ tên, số điện thoại, trường đang dạy, email và mật khẩu. Nếu bấm **Tiếp tục với Google** thì điền thêm số điện thoại và trường. Tài khoản được tạo ở trạng thái **giáo viên chờ duyệt**; quản trị viên duyệt như dưới đây.
+
 ### Đăng nhập bằng Google (tuỳ chọn)
 
-Giáo viên mới bấm **Tiếp tục với Google** ở trang đăng nhập. Hệ thống tạo tài khoản **giáo viên ở trạng thái chờ duyệt** và báo cho quản trị viên (chuông thông báo). Quản trị viên vào **Tài khoản** → **Chờ phê duyệt** → **Duyệt** (hoặc **Từ chối**). Sau khi được duyệt, giáo viên đăng nhập lại bằng Google là dùng được ngay.
+Giáo viên mới bấm **Tiếp tục với Google** ở trang đăng nhập, điền số điện thoại và trường. Hệ thống tạo tài khoản **giáo viên ở trạng thái chờ duyệt** và báo cho quản trị viên (chuông thông báo). Quản trị viên vào **Tài khoản** → **Chờ phê duyệt** → **Duyệt** (hoặc **Từ chối**). Sau khi được duyệt, giáo viên đăng nhập lại bằng Google là dùng được ngay.
 
 Tài khoản có sẵn (do admin tạo) mà trùng email Google thì được liên kết luôn, không phải duyệt lại.
 

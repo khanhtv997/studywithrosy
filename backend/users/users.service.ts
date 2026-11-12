@@ -29,7 +29,7 @@ export class UsersService {
     @Inject(NotificationsService) private readonly notifications: NotificationsService,
   ) {}
   private readonly columns = `id, email, name, role, student_id AS "studentId", active, must_change_password AS "mustChangePassword",
-    approval, google_sub AS "googleSub", google_sub IS NOT NULL AS "googleLinked", avatar_url AS "avatarUrl",
+    approval, google_sub AS "googleSub", google_sub IS NOT NULL AS "googleLinked", avatar_url AS "avatarUrl", phone, school,
     password_hash AS "passwordHash", created_at AS "createdAt"`;
   publicUser(user: UserRecord): PublicUser { const { passwordHash: _hash, googleSub: _sub, ...safe } = user; return safe; }
   async all() { return (await this.db.query<UserRecord>(`SELECT ${this.columns} FROM users ORDER BY created_at, id`)).map(user => this.publicUser(user)); }
@@ -43,7 +43,7 @@ export class UsersService {
               count(*) FILTER (WHERE approval = 'pending') AS pending
        FROM users`);
     const f = new SqlFilter();
-    if (q) f.add(p => `name ILIKE ${p} OR email ILIKE ${p}`, likePattern(q));
+    if (q) f.add(p => `name ILIKE ${p} OR email ILIKE ${p} OR phone ILIKE ${p} OR school ILIKE ${p}`, likePattern(q));
     if (role !== 'all') f.add(p => `role = ${p}`, role);
     if (status === 'pending') f.raw(`approval = 'pending'`);
     const [{ total }] = await this.db.query<{ total: string }>(`SELECT count(*) AS total FROM users ${f.where()}`, [...f.values]);
@@ -112,38 +112,44 @@ export class UsersService {
   }
 
   /**
-   * Signing in with Google: the account linked to this Google account, else the account with the
-   * same (Google-verified) email, which then gets linked. Anyone else gets a new teacher account
-   * that waits for an admin's approval; admins are told about it.
+   * The account for a Google sign-in: the one linked to this Google account, else the one with the
+   * same (Google-verified) email, which then gets linked. Null when the person is new.
    */
-  async fromGoogle(profile: GoogleProfile): Promise<UserRecord> {
+  async findForGoogle(profile: GoogleProfile): Promise<UserRecord | null> {
     const linked = (await this.db.query<UserRecord>(`SELECT ${this.columns} FROM users WHERE google_sub = $1`, [profile.sub]))[0];
     if (linked) {
       if (profile.picture && profile.picture !== linked.avatarUrl) await this.db.query('UPDATE users SET avatar_url=$1 WHERE id=$2', [profile.picture, linked.id]);
       return { ...linked, avatarUrl: profile.picture ?? linked.avatarUrl };
     }
-    const email = profile.email.trim().toLowerCase();
-    const sameEmail = await this.byEmail(email);
-    if (sameEmail) {
-      if (sameEmail.googleSub) throw new ConflictException('This email is already linked to another Google account');
-      await this.db.query('UPDATE users SET google_sub=$1, avatar_url=COALESCE($2, avatar_url), updated_at=now() WHERE id=$3', [profile.sub, profile.picture, sameEmail.id]);
-      return this.require(sameEmail.id);
-    }
+    const sameEmail = await this.byEmail(profile.email);
+    if (!sameEmail) return null;
+    if (sameEmail.googleSub) throw new ConflictException('This email is already linked to another Google account');
+    await this.db.query('UPDATE users SET google_sub=$1, avatar_url=COALESCE($2, avatar_url), updated_at=now() WHERE id=$3', [profile.sub, profile.picture, sameEmail.id]);
+    return this.require(sameEmail.id);
+  }
+
+  /**
+   * A teacher signing up (form or Google): the account waits for an admin's approval, and the
+   * admins are told. Without a Google account the given password is used; with one, sign-in is by Google.
+   */
+  async registerTeacher(input: { name: string; email: string; phone: string; school: string; password?: string; google?: GoogleProfile }): Promise<UserRecord> {
+    const email = input.email.trim().toLowerCase();
+    if (await this.byEmail(email)) throw new ConflictException('This email is already registered. Sign in instead.');
     const id = `user-${randomUUID()}`;
-    // No usable password: this account signs in with Google only (an admin can set a password later).
-    const unusable = await hash(randomBytes(32).toString('hex'), 10);
-    await this.db.query(
-      `INSERT INTO users (id, email, name, role, password_hash, google_sub, avatar_url, approval)
-       VALUES ($1, $2, $3, 'teacher', $4, $5, $6, 'pending') ON CONFLICT DO NOTHING`,
-      [id, email, profile.name || email, unusable, profile.sub, profile.picture]);
-    const created = await this.byId(id);
-    // Two sign-ins at the same moment: the other one created it.
-    if (!created) return this.fromGoogle(profile);
+    // A Google account gets no usable password (an admin can set one later).
+    const passwordHash = await hash(input.password ?? randomBytes(32).toString('hex'), 10);
+    const inserted = await this.db.query(
+      `INSERT INTO users (id, email, name, role, password_hash, google_sub, avatar_url, phone, school, approval)
+       VALUES ($1, $2, $3, 'teacher', $4, $5, $6, $7, $8, 'pending') ON CONFLICT DO NOTHING RETURNING id`,
+      [id, email, input.name, passwordHash, input.google?.sub ?? null, input.google?.picture ?? null, input.phone, input.school]);
+    // Two sign-ups at the same moment: the other one won.
+    if (!inserted.length) throw new ConflictException('This email is already registered. Sign in instead.');
+    const created = await this.require(id);
     const admins = await this.db.query<{ id: string }>(`SELECT id FROM users WHERE role = 'admin' AND active AND approval = 'approved'`);
     await this.notifications.notifyUsers(admins.map(a => a.id), {
       type: 'account_pending',
       title: `Giáo viên mới chờ duyệt: ${created.name}`,
-      body: `${created.email} vừa đăng ký bằng Google. Bấm để duyệt hoặc từ chối.`,
+      body: `${created.school ?? ''} · ${created.phone ?? ''} · ${created.email}${input.google ? ' (Google)' : ''}. Bấm để duyệt hoặc từ chối.`,
       link: '/admin/users?status=pending',
     });
     return created;
