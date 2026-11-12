@@ -5,7 +5,7 @@ import { formatInfo } from '../../../../shared/exercise-formats';
 import type { Assessment, DrawTool, HighlightColor, Question, ReviewAnnotations, ReviewHighlight, ReviewStroke } from '../../../types';
 import { useI18n } from '../../../i18n';
 import { addHighlight, segmentsOf, selectionBlocks } from './highlights';
-import { hitsStroke, MARKER_COLORS, newStrokeId, pathOf, PEN_COLORS, pushPoint, SIZES, type DrawMode } from './drawing';
+import { cursorFor, hitsStroke,MARKER_COLORS, newStrokeId, pathOf, PEN_COLORS, pushPoint, SIZES, type DrawMode } from './drawing';
 import './review.css';
 
 const DRAW_TOOLS: { value: DrawMode; label: string; icon: typeof PenLine }[] = [
@@ -377,6 +377,7 @@ export function AssessmentReview({ assessment, onExit }: { assessment: Assessmen
       onTouchEnd={() => { if (drawMode === 'none') setTimeout(readSelection, 50); }}>
       {loaded && layer('root')}
       {drawMode !== 'none' && <div className={`review-draw-capture is-${drawMode}`} aria-hidden="true"
+        style={{ cursor: cursorFor(drawMode, drawMode === 'marker' ? markerColor : penColor) }}
         onPointerDown={onDrawStart} onPointerMove={onDrawMove} onPointerUp={onDrawEnd} onPointerCancel={onDrawEnd} onLostPointerCapture={onDrawEnd} />}
       {!loaded ? <p className="review-loading">{t('Đang tải...')}</p> : groups.map(group => <section key={group.key} className="review-group">
         {group.passage && <div className="review-passage" data-anchor={`p:${group.key}`}>

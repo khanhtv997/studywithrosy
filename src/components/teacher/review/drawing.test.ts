@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { hitsStroke, pathOf, pushPoint } from './drawing';
+import { cursorFor, hitsStroke, pathOf, pushPoint } from './drawing';
 import type { ReviewStroke } from '../../../types';
 
 test('points too close together are skipped and kept ones are rounded', () => {
@@ -22,4 +22,12 @@ test('the eraser hits a stroke near its line, counting its width', () => {
   assert.equal(hitsStroke(stroke, 50, 12, 4), true);
   assert.equal(hitsStroke(stroke, 50, 20, 4), false);
   assert.equal(hitsStroke({ ...stroke, points: [0, 0], width: 4 }, 3, 3, 4), true);
+});
+
+test('each tool gets its own pointer, with the hotspot at its tip and the pen in its colour', () => {
+  assert.equal(cursorFor('none', '#e53935'), 'auto');
+  const pen = cursorFor('pen', '#e53935');
+  assert.match(pen, /^url\("data:image\/svg\+xml,.+"\) 2 26, crosshair$/);
+  assert.ok(decodeURIComponent(pen).includes('fill="#e53935"'));
+  assert.match(cursorFor('eraser', '#e53935'), /\) 7 22, cell$/);
 });
