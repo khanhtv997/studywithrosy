@@ -119,7 +119,7 @@ export const UserManagement: React.FC = () => {
           </label>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="table-scroll">
         {pager.error ? <p role="alert" className="empty-state">{pager.error}</p> : pager.loading && !pager.data ? <p className="empty-state">{t('Đang tải danh sách tài khoản...')}</p> :
           <table className="data-table min-w-[820px]">
             <thead><tr><th>{t('Người dùng')}</th><th>{t('Vai trò')}</th><th>{t('Học sinh liên kết')}</th><th>{t('Trạng thái')}</th><th className="text-right">{t('Mật khẩu')}</th></tr></thead>

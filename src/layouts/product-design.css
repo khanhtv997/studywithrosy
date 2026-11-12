@@ -450,3 +450,7 @@
 .app-profile-reminder-later:hover { background: #fff1cc; }
 .app-profile-reminder button:focus-visible { outline: 2px solid var(--app-accent, #625bc0); outline-offset: 2px; }
 .form-field-error { color: #be123c; font-size: 12px; font-weight: 600; }
+
+/* A table that scrolls inside its panel (both ways) with the column headers kept in view; the pager stays right below. */
+.table-scroll { max-height: max(360px, calc(100dvh - 330px)); overflow: auto; overscroll-behavior: contain; }
+.table-scroll .data-table thead th { position: sticky; top: 0; z-index: 2; box-shadow: inset 0 -1px 0 #eef0f5; }
