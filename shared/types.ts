@@ -346,6 +346,27 @@ export interface ClassAssessmentRow {
   completionRate: number;
 }
 
+/** A saved AI review suggestion for an assessment (one class, or all of the user's classes when classId is null). */
+export interface AiSuggestion {
+  id: string;
+  assessmentId: string;
+  classId: string | null;
+  /** Markdown from the model. */
+  content: string;
+  /** Submissions and average the suggestion was based on, to tell when it is out of date. */
+  submitted: number;
+  avgScore: number | null;
+  createdAt: string;
+  createdById: string | null;
+  createdByName: string;
+}
+
+/** Result of asking for a new suggestion: saved unless the AI was unavailable and a canned text was used. */
+export interface AiSuggestionResult {
+  suggestion: AiSuggestion;
+  saved: boolean;
+}
+
 /** One class: its overall numbers and a page of its assessments. */
 export interface ClassAnalytics extends Page<ClassAssessmentRow> {
   classId: string;

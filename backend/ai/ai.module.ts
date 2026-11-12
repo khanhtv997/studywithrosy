@@ -4,5 +4,5 @@ import { AiKeysController } from './ai-keys.controller';
 import { AiKeysService } from './ai-keys.service';
 import { AiService } from './ai.service';
 
-@Module({ controllers: [AiController, AiKeysController], providers: [AiService, AiKeysService] })
+@Module({ controllers: [AiController, AiKeysController], providers: [AiService, AiKeysService], exports: [AiService] })
 export class AiModule {}

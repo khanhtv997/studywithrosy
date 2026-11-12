@@ -29,6 +29,8 @@ const vi: Record<string, string> = {
   'Text or image is required': 'Hãy dán nội dung đề hoặc tải tệp lên',
   'True/false answer must be T or F': 'Đáp án Đúng/Sai phải là T hoặc F',
   'User not found': 'Không tìm thấy tài khoản',
+  'Suggestion not found': 'Không tìm thấy gợi ý',
+  'Only the person who made it can delete it': 'Chỉ người tạo gợi ý mới xoá được',
   'Only the owner can do this': 'Chỉ người tạo đề mới làm được việc này',
   'Teacher not found': 'Không tìm thấy giáo viên',
   'Only admins can change the teachers of a class': 'Chỉ quản trị viên mới đổi được giáo viên phụ trách lớp',

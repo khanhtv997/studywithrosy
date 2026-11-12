@@ -98,6 +98,18 @@ const migrations = [
   UPDATE classes SET data = data || jsonb_build_object('teacherIds',
     COALESCE((SELECT jsonb_agg(id ORDER BY created_at) FROM users WHERE role = 'teacher'), '[]'::jsonb));
   CREATE INDEX idx_classes_teacher_ids ON classes USING gin ((data->'teacherIds'));`,
+  // Saved AI review suggestions per assessment (and class, or all classes when class_id is null), kept as history.
+  `CREATE TABLE ai_suggestions (
+    id text PRIMARY KEY,
+    assessment_id text NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+    class_id text REFERENCES classes(id) ON DELETE CASCADE,
+    content text NOT NULL,
+    submitted integer NOT NULL DEFAULT 0,
+    avg_score numeric,
+    created_by text REFERENCES users(id) ON DELETE SET NULL,
+    created_at timestamptz NOT NULL DEFAULT now()
+  );
+  CREATE INDEX idx_ai_suggestions_assessment ON ai_suggestions(assessment_id, created_at DESC);`,
 ];
 
 @Injectable()

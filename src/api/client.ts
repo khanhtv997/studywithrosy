@@ -3,7 +3,7 @@ import type {
   AppUser, Assessment, ClassRoom, CreateAssessmentInput, CreateClassInput, CreateStudentInput,
   AiApiKey, AiKeyTestResult, NotificationList, OcrExamResult, Role, StudentImportInput, StudentImportPreview, StudentImportResult, Student, Submission, UpdateAssessmentInput,
   AssessmentShareInfo, CopyAssessmentInput, SharedAssessmentSummary, SharedAssessmentView, StaffMember, UpdateClassInput,
-  AssessmentAnalytics, AssessmentPage, ClassAnalytics, StudentPage, SubmissionPage, UserPage,
+  AssessmentAnalytics, AssessmentPage, ClassAnalytics, StudentPage, SubmissionPage, UserPage, AiSuggestion, AiSuggestionResult,
 } from '../types';
 
 export interface BootstrapData {
@@ -104,6 +104,12 @@ export const eduApi = {
   userPage: (params: PageParams, signal?: AbortSignal) => apiRequest<UserPage>(`admin/users/page${queryString(params)}`, 'GET', undefined, signal),
   assessmentAnalytics: (id: string, classId?: string, signal?: AbortSignal) =>
     apiRequest<AssessmentAnalytics>(`analytics/assessments/${encodeURIComponent(id)}${queryString({ classId })}`, 'GET', undefined, signal),
+  // Saved AI review suggestions for an assessment (classId narrows to one class).
+  suggestions: (assessmentId: string, classId?: string, signal?: AbortSignal) =>
+    apiRequest<AiSuggestion[]>(`analytics/assessments/${encodeURIComponent(assessmentId)}/suggestions${queryString({ classId })}`, 'GET', undefined, signal),
+  suggest: (assessmentId: string, classId?: string) =>
+    apiRequest<AiSuggestionResult>(`analytics/assessments/${encodeURIComponent(assessmentId)}/suggestions${queryString({ classId })}`, 'POST'),
+  deleteSuggestion: (id: string) => apiRequest<{ id: string }>(`analytics/suggestions/${encodeURIComponent(id)}`, 'DELETE'),
   classAnalytics: (classId: string, params: PageParams, signal?: AbortSignal) =>
     apiRequest<ClassAnalytics>(`analytics/classes/${encodeURIComponent(classId)}${queryString(params)}`, 'GET', undefined, signal),
 

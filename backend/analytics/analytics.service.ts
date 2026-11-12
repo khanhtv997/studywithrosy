@@ -1,8 +1,10 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { BLANK_ANSWER, computeItemAnalysis, computeKnowledgeGaps } from '../../shared/analytics';
 import { isAnswerCorrect } from '../../shared/grading';
-import type { AppUser, AssessmentAnalytics, ClassAnalytics, ClassAssessmentRow, ClassResult, Submission } from '../../shared/types';
+import type { AiSuggestion, AiSuggestionResult, AppUser, AssessmentAnalytics, ClassAnalytics, ClassAssessmentRow, ClassResult, Submission } from '../../shared/types';
+import { AiService } from '../ai/ai.service';
 import { AssessmentsService } from '../assessments/assessments.service';
 import { ClassesService } from '../classes/classes.service';
 import { optionalFilter, pageFields, round1, SqlFilter, toNumber } from '../common/paging';
@@ -28,7 +30,58 @@ export class AnalyticsService {
     @Inject(DatabaseService) private readonly db: DatabaseService,
     @Inject(ClassesService) private readonly classes: ClassesService,
     @Inject(AssessmentsService) private readonly assessments: AssessmentsService,
+    @Inject(AiService) private readonly ai: AiService,
   ) {}
+
+  // ---------- Saved AI review suggestions ----------
+
+  private suggestionColumns = `s.id, s.assessment_id AS "assessmentId", s.class_id AS "classId", s.content, s.submitted,
+    s.avg_score::float AS "avgScore", s.created_at AS "createdAt", s.created_by AS "createdById", COALESCE(u.name, '') AS "createdByName"`;
+
+  /** History for an assessment and class choice (null = all the user's classes), newest first. */
+  async suggestions(user: AppUser, id: string, query: unknown): Promise<AiSuggestion[]> {
+    const { classId } = validate(assessmentQuerySchema, query);
+    await this.assessment(user, id, { classId }); // same access rules as the analytics themselves
+    return this.db.query<AiSuggestion>(
+      `SELECT ${this.suggestionColumns} FROM ai_suggestions s LEFT JOIN users u ON u.id = s.created_by
+       WHERE s.assessment_id = $1 AND s.class_id IS NOT DISTINCT FROM $2 ORDER BY s.created_at DESC LIMIT 30`, [id, classId ?? null]);
+  }
+
+  /** Asks the AI for a new suggestion from the current results and keeps it in the history. */
+  async suggest(user: AppUser, id: string, query: unknown): Promise<AiSuggestionResult> {
+    const { classId } = validate(assessmentQuerySchema, query);
+    const data = await this.assessment(user, id, { classId });
+    const result = await this.ai.analysis({
+      assessmentTitle: data.assessment.title,
+      avgScore: data.totals.avgScore ?? 0,
+      totalStudents: data.totals.submitted,
+      weakTopics: data.gaps.filter(g => g.status !== 'strong'),
+      topWrongQuestions: [...data.items].sort((a, b) => b.errorRate - a.errorRate).slice(0, 3).map(q => ({
+        order: q.order, text: q.text, errorRate: `${q.errorRate}%`, mostCommonDistractor: q.mostCommonDistractor, grammarTopic: q.grammarTopic,
+      })),
+    });
+    const suggestion: AiSuggestion = {
+      id: `sug-${randomUUID()}`, assessmentId: id, classId: classId ?? null, content: result.analysis,
+      submitted: data.totals.submitted, avgScore: data.totals.avgScore, createdAt: new Date().toISOString(),
+      createdById: user.id, createdByName: user.name,
+    };
+    // The canned fallback (AI unavailable) is shown but not kept: it would only clutter the history.
+    if (!result.fromAi) return { suggestion, saved: false };
+    await this.db.query(`INSERT INTO ai_suggestions (id, assessment_id, class_id, content, submitted, avg_score, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)`, [suggestion.id, id, suggestion.classId, suggestion.content, suggestion.submitted, suggestion.avgScore, user.id]);
+    return { suggestion, saved: true };
+  }
+
+  /** Removes one saved suggestion: whoever made it, or an admin. */
+  async deleteSuggestion(user: AppUser, suggestionId: string) {
+    const [row] = await this.db.query<{ assessment_id: string; class_id: string | null; created_by: string | null }>(
+      'SELECT assessment_id, class_id, created_by FROM ai_suggestions WHERE id = $1', [suggestionId]);
+    if (!row) throw new NotFoundException('Suggestion not found');
+    await this.assessment(user, row.assessment_id, { classId: row.class_id ?? undefined });
+    if (user.role !== 'admin' && row.created_by && row.created_by !== user.id) throw new ForbiddenException('Only the person who made it can delete it');
+    await this.db.query('DELETE FROM ai_suggestions WHERE id = $1', [suggestionId]);
+    return { id: suggestionId };
+  }
 
   async assessment(user: AppUser, id: string, query: unknown): Promise<AssessmentAnalytics> {
     const { classId } = validate(assessmentQuerySchema, query);

@@ -166,7 +166,9 @@ export class AiService {
     const fallback = `Điểm trung bình là ${data.avgScore}/10 trên ${data.totalStudents} bài nộp. Nên ôn lại ${topic} và luyện thêm các câu học sinh thường làm sai.`;
     try {
       const response = await this.generate(`Phân tích ngắn gọn kết quả lớp bằng tiếng Việt và đề xuất hoạt động ôn tập. Trình bày bằng Markdown đơn giản: vài tiêu đề "##", gạch đầu dòng "-", chữ đậm "**" cho ý chính; không dùng bảng, không lời chào, tối đa khoảng 250 từ. Bài: ${data.assessmentTitle || ''}. Điểm trung bình: ${data.avgScore}/10. Số bài: ${data.totalStudents}. Chủ đề yếu: ${JSON.stringify(data.weakTopics)}. Câu sai nhiều: ${JSON.stringify(data.topWrongQuestions)}.`);
-      return { success: true, analysis: response?.text.trim() || fallback };
-    } catch (error) { this.logger.warn(`Analysis AI failed: ${String(error)}`); return { success: true, analysis: fallback }; }
+      const text = response?.text.trim();
+      // fromAi tells callers whether this is a real suggestion worth saving or the canned fallback.
+      return { success: true, analysis: text || fallback, fromAi: !!text };
+    } catch (error) { this.logger.warn(`Analysis AI failed: ${String(error)}`); return { success: true, analysis: fallback, fromAi: false }; }
   }
 }

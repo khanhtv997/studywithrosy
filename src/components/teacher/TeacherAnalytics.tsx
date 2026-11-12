@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { AlertTriangle, BarChart3, BookOpen, ChevronDown, ChevronUp, ClipboardList, FileText, School, Sparkles, TrendingUp, Users } from 'lucide-react';
+import { AlertTriangle, BarChart3, BookOpen, ChevronDown, ChevronUp, ClipboardList, Clock, FileText, History, RefreshCw, School, Sparkles, Trash2, TrendingUp, Users } from 'lucide-react';
 import { eduApi } from '../../api/client';
 import { useApp } from '../../context/AppContext';
-import type { AssessmentAnalytics, ClassAnalytics, ClassAssessmentRow, ClassResult } from '../../types';
+import type { AiSuggestion, AssessmentAnalytics, ClassAnalytics, ClassAssessmentRow, ClassResult } from '../../types';
 import { PageHeader, StatCard } from '../ui/PageHeader';
 import { Pagination, useServerPage } from '../ui/Pagination';
 import { Markdown } from '../ui/Markdown';
@@ -95,9 +95,6 @@ function AssessmentView({ assessmentId, classId, onPickClass }: { assessmentId: 
   const [data, setData] = useState<AssessmentAnalytics | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -107,35 +104,13 @@ function AssessmentView({ assessmentId, classId, onPickClass }: { assessmentId: 
       .catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause)); });
     return () => controller.abort();
   }, [assessmentId, classId, dataVersion]);
-  // A different assessment or class: the old suggestion no longer applies.
-  useEffect(() => { setAiAnalysis(null); setAiError(null); setExpanded(null); }, [assessmentId, classId]);
+  useEffect(() => { setExpanded(null); }, [assessmentId, classId]);
 
   if (error) return <div className="empty-state panel"><AlertTriangle size={28} aria-hidden="true" /><span role="alert">{error}</span></div>;
   if (!data || data.assessment.id !== assessmentId) return <div className="empty-state panel"><span>{t('Đang tải...')}</span></div>;
 
   const { totals, byClass, items, gaps } = data;
   const hardQuestions = items.filter(q => q.errorRate >= 50).length;
-
-  const generate = async () => {
-    setAiLoading(true);
-    setAiError(null);
-    try {
-      const result = await eduApi.analysis({
-        assessmentTitle: data.assessment.title,
-        avgScore: totals.avgScore ?? 0,
-        totalStudents: totals.submitted,
-        weakTopics: gaps.filter(g => g.status !== 'strong'),
-        topWrongQuestions: [...items].sort((a, b) => b.errorRate - a.errorRate).slice(0, 3).map(q => ({
-          order: q.order, text: q.text, errorRate: `${q.errorRate}%`, mostCommonDistractor: q.mostCommonDistractor, grammarTopic: q.grammarTopic,
-        })),
-      });
-      if (result.success && result.analysis) setAiAnalysis(result.analysis);
-    } catch (cause) {
-      setAiError(cause instanceof Error ? cause.message : t('Không tạo được phân tích.'));
-    } finally {
-      setAiLoading(false);
-    }
-  };
 
   return <>
     <div className="stat-grid">
@@ -147,20 +122,7 @@ function AssessmentView({ assessmentId, classId, onPickClass }: { assessmentId: 
 
     {byClass.length > 0 && <ClassComparison rows={byClass} activeClassId={classId} onPick={onPickClass} />}
 
-    <section className="panel p-5 sm:p-6">
-      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-        <h2 className="flex items-center gap-2 text-base font-bold text-slate-900"><Sparkles size={18} className="text-indigo-600" aria-hidden="true" />{t('Gợi ý nội dung ôn tập')}</h2>
-        <button type="button" onClick={generate} disabled={aiLoading || totals.submitted === 0}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50">
-          {aiLoading ? <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />{t('Đang tổng hợp kết quả...')}</>
-            : <><Sparkles size={14} className="text-amber-300" aria-hidden="true" />{aiAnalysis ? t('Cập nhật gợi ý') : t('Xem gợi ý ôn tập')}</>}
-        </button>
-      </div>
-      {aiError && <p role="alert" className="mt-3 text-xs text-rose-700">{aiError}</p>}
-      {aiAnalysis
-        ? <div className="analytics-scroll mt-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 sm:p-5" tabIndex={0} aria-label={t('Gợi ý nội dung ôn tập')}><Markdown text={aiAnalysis} /></div>
-        : <p className="mt-2 text-sm text-slate-600">{totals.submitted === 0 ? t('Chưa có bài nộp để phân tích.') : t('Tổng hợp các lỗi sai thường gặp và gợi ý nội dung ôn tập ngắn cho buổi học tiếp theo.')}</p>}
-    </section>
+    <SuggestionPanel assessmentId={assessmentId} classId={classId} submitted={totals.submitted} avgScore={totals.avgScore} />
 
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
       <section className="panel flex min-h-0 flex-col xl:col-span-2">
@@ -325,4 +287,118 @@ function ClassView({ classId, onOpenAssessment }: { classId: string; onOpenAsses
       <Pagination state={pager} unit={t('bài')} />
     </section>
   </>;
+}
+
+/* ---------------- Saved AI review suggestions ---------------- */
+
+/**
+ * The latest saved suggestion opens straight away (no new AI call); "Gợi ý lại" asks again and adds to
+ * the history, and any earlier suggestion can be reopened or deleted.
+ */
+function SuggestionPanel({ assessmentId, classId, submitted, avgScore }: { assessmentId: string; classId?: string; submitted: number; avgScore: number | null }) {
+  const { currentUser } = useApp();
+  const { t, locale } = useI18n();
+  const [history, setHistory] = useState<AiSuggestion[] | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  /** A canned answer shown when the AI was unavailable; never saved. */
+  const [unsaved, setUnsaved] = useState<AiSuggestion | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setHistory(null); setSelectedId(null); setUnsaved(null); setError(null); setShowHistory(false);
+    eduApi.suggestions(assessmentId, classId, controller.signal)
+      .then(items => { setHistory(items); setSelectedId(items[0]?.id ?? null); })
+      .catch(cause => { if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause)); });
+    return () => controller.abort();
+  }, [assessmentId, classId]);
+
+  const current = unsaved ?? history?.find(item => item.id === selectedId) ?? null;
+  const latest = history?.[0];
+  // New submissions (or reviews changing the average) since the latest suggestion make it out of date.
+  const outdated = !!latest && (latest.submitted !== submitted || latest.avgScore !== avgScore);
+  const when = (iso: string) => new Date(iso).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' });
+
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await eduApi.suggest(assessmentId, classId);
+      if (result.saved) {
+        setHistory(items => [result.suggestion, ...(items ?? [])]);
+        setSelectedId(result.suggestion.id);
+        setUnsaved(null);
+      } else {
+        setUnsaved(result.suggestion);
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t('Không tạo được phân tích.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const remove = async (item: AiSuggestion) => {
+    if (!window.confirm(t('Xoá gợi ý lúc {time}?', { time: when(item.createdAt) }))) return;
+    try {
+      await eduApi.deleteSuggestion(item.id);
+      const next = (history ?? []).filter(i => i.id !== item.id);
+      setHistory(next);
+      if (selectedId === item.id) setSelectedId(next[0]?.id ?? null);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
+  };
+
+  const canDelete = (item: AiSuggestion) => currentUser?.role === 'admin' || !item.createdById || item.createdById === currentUser?.id;
+
+  return <section className="panel p-5 sm:p-6">
+    <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
+      <h2 className="flex items-center gap-2 text-base font-bold text-slate-900"><Sparkles size={18} className="text-indigo-600" aria-hidden="true" />{t('Gợi ý nội dung ôn tập')}</h2>
+      <div className="flex flex-wrap items-center gap-2">
+        {history && history.length > 0 && <button type="button" onClick={() => setShowHistory(v => !v)} aria-expanded={showHistory}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50">
+          <History size={14} aria-hidden="true" />{t('Lịch sử ({count})', { count: history.length })}
+        </button>}
+        <button type="button" onClick={generate} disabled={loading || submitted === 0 || history === null}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50">
+          {loading ? <><span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" aria-hidden="true" />{t('Đang tổng hợp kết quả...')}</>
+            : latest ? <><RefreshCw size={14} aria-hidden="true" />{t('Gợi ý lại')}</>
+            : <><Sparkles size={14} className="text-amber-300" aria-hidden="true" />{t('Xem gợi ý ôn tập')}</>}
+        </button>
+      </div>
+    </div>
+
+    {error && <p role="alert" className="mt-3 text-xs text-rose-700">{error}</p>}
+
+    {showHistory && history && history.length > 0 && <ul className="mt-3 grid max-h-56 gap-1 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/60 p-2" aria-label={t('Lịch sử gợi ý')}>
+      {history.map((item, index) => <li key={item.id} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 ${item.id === current?.id ? 'bg-white shadow-xs ring-1 ring-indigo-200' : 'hover:bg-white'}`}>
+        <button type="button" className="min-w-0 flex-1 text-left" onClick={() => { setSelectedId(item.id); setUnsaved(null); }} aria-current={item.id === current?.id ? 'true' : undefined}>
+          <span className="block text-xs font-semibold text-slate-800">{when(item.createdAt)}{index === 0 && <span className="badge badge-info ml-2">{t('Mới nhất')}</span>}</span>
+          <span className="block truncate text-[11px] text-slate-500">
+            {t('{name} · {count} bài nộp · TB {score}', { name: item.createdByName || '—', count: item.submitted, score: item.avgScore ?? '—' })}
+          </span>
+        </button>
+        {canDelete(item) && <button type="button" className="icon-btn icon-btn-danger" onClick={() => void remove(item)} aria-label={t('Xoá gợi ý lúc {time}', { time: when(item.createdAt) })} title={t('Xoá')}>
+          <Trash2 size={14} aria-hidden="true" /></button>}
+      </li>)}
+    </ul>}
+
+    {current ? <>
+      <p className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-slate-500">
+        <Clock size={13} aria-hidden="true" />
+        {unsaved ? t('Gợi ý mẫu (AI chưa dùng được nên không lưu)') : t('Tạo lúc {time} bởi {name}', { time: when(current.createdAt), name: current.createdByName || '—' })}
+        {!unsaved && <span>· {t('dựa trên {count} bài nộp', { count: current.submitted })}</span>}
+        {!unsaved && current.id !== latest?.id && <span className="badge badge-muted">{t('Bản cũ')}</span>}
+      </p>
+      {!unsaved && current.id === latest?.id && outdated && <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        {t('Kết quả đã thay đổi từ lần gợi ý này (hiện {count} bài nộp). Bấm "Gợi ý lại" để cập nhật.', { count: submitted })}
+      </p>}
+      <div className="analytics-scroll mt-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 sm:p-5" tabIndex={0} aria-label={t('Gợi ý nội dung ôn tập')}>
+        <Markdown text={current.content} />
+      </div>
+    </> : <p className="mt-2 text-sm text-slate-600">
+      {history === null && !error ? t('Đang tải...') : submitted === 0 ? t('Chưa có bài nộp để phân tích.') : t('Tổng hợp các lỗi sai thường gặp và gợi ý nội dung ôn tập ngắn cho buổi học tiếp theo.')}
+    </p>}
+  </section>;
 }

@@ -104,6 +104,21 @@ const en: Record<string, string> = {
   'Lớp chưa được giao đề nào.': 'This class has no tests yet.',
   'Xem chi tiết': 'View details',
 
+  // Saved AI suggestions
+  'Xoá gợi ý lúc {time}?': 'Delete the suggestion from {time}?',
+  'Xoá gợi ý lúc {time}': 'Delete the suggestion from {time}',
+  'Lịch sử ({count})': 'History ({count})',
+  'Gợi ý lại': 'Suggest again',
+  'Lịch sử gợi ý': 'Suggestion history',
+  'Mới nhất': 'Latest',
+  '{name} · {count} bài nộp · TB {score}': '{name} · {count} submissions · avg {score}',
+  'Xoá': 'Delete',
+  'Gợi ý mẫu (AI chưa dùng được nên không lưu)': 'Standard suggestion (AI unavailable, so it was not saved)',
+  'Tạo lúc {time} bởi {name}': 'Created {time} by {name}',
+  'dựa trên {count} bài nộp': 'based on {count} submissions',
+  'Bản cũ': 'Older version',
+  'Kết quả đã thay đổi từ lần gợi ý này (hiện {count} bài nộp). Bấm "Gợi ý lại" để cập nhật.': 'Results have changed since this suggestion ({count} submissions now). Click "Suggest again" to update it.',
+
   // Server messages in Vietnamese
   'Hãy chọn ít nhất một lớp trước khi giao bài.': 'Choose at least one class before assigning.',
   'Liên kết chia sẻ không còn hiệu lực hoặc bạn không được chia sẻ đề này.': 'The share link no longer works, or this test was not shared with you.',
