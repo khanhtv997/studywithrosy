@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
 import { AssessmentsService } from './assessments.service';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import type { PublicUser } from '../users/users.service';
@@ -10,6 +10,7 @@ export class AssessmentsController {
   @Get() list(@CurrentUser() user: PublicUser) { return this.assessments.findAllFor(user); }
 
   // Sharing between teachers. These come before ':id' so "shared-with-me" is not read as an id.
+  @Get('page') page(@Query() query: unknown, @CurrentUser() user: PublicUser) { return this.assessments.page(user, query); }
   @Get('shared-with-me') sharedWithMe(@CurrentUser() user: PublicUser) { return this.assessments.sharedWithMe(user); }
   @Get('shared/:key') openShared(@Param('key') key: string, @CurrentUser() user: PublicUser) { return this.assessments.openShared(key, user); }
   @Post('shared/:key/copy') copy(@Param('key') key: string, @Body() body: unknown, @CurrentUser() user: PublicUser) { return this.assessments.copyShared(key, body, user); }

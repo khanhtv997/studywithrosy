@@ -61,7 +61,7 @@ export function ClassDetail({ classId }: { classId: string }) {
       <StatCard icon={AlertTriangle} label={t('Cần bồi dưỡng')} value={progress.studentsNeedingSupport.length} tone="rose" />
     </div>
 
-    <StudentRoster title={t('Học sinh trong lớp')} students={members} emptyText={t('Lớp chưa có học sinh. Bấm “Thêm học sinh” để bắt đầu.')} />
+    <StudentRoster title={t('Học sinh trong lớp')} classId={cls.id} emptyText={t('Lớp chưa có học sinh. Bấm “Thêm học sinh” để bắt đầu.')} />
 
     {isAddOpen && <StudentFormModal defaultClassId={cls.id} onClose={() => setIsAddOpen(false)} />}
     {editingTeachers && <ClassTeachersModal classroom={cls} onClose={() => setEditingTeachers(false)} />}

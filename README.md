@@ -106,3 +106,8 @@ Trên màn hình ≥ 1024px, nút **Thu gọn** ở cuối sidebar chuyển sang
 - **Một đề giao cho nhiều lớp** (`classIds`). Có thể thêm lớp bất cứ lúc nào; lớp đã có học sinh nộp bài thì không bỏ ra được. Bài nháp có thể chưa có lớp.
 - **Chia sẻ đề** (nút chia sẻ trong danh sách đề): chia sẻ trực tiếp cho giáo viên (họ nhận thông báo, đề hiện ở tab "Được chia sẻ với tôi") hoặc tạo liên kết `/shared/<token>` (tắt được bất cứ lúc nào). Người nhận mở đề, xem trước như học sinh, rồi bấm "Giao cho lớp của tôi" để tạo **bản sao riêng**; bản gốc và bài làm của lớp người chia sẻ không bị ảnh hưởng.
 - Migration 6 chuyển `assessments.class_id` sang `data.classIds`, thêm `owner_id`, `share_token`, bảng `assessment_shares`, và gán mọi lớp hiện có cho tất cả giáo viên hiện có (admin chỉnh lại sau).
+
+## Phân trang ở server và phân tích
+
+- Các bảng Chấm bài, Đề thi, Học sinh và Tài khoản lấy từng trang từ API (`GET /api/submissions/page`, `/assessments/page`, `/students/page`, `/admin/users/page` với `page`, `pageSize` 10/20/50/100, `q` và bộ lọc). Lọc, đếm theo tab và phân trang chạy bằng SQL; frontend dùng hook `useServerPage` và tự tải lại sau mỗi thao tác sửa dữ liệu.
+- Phân tích: `GET /api/analytics/assessments/:id?classId=` (câu sai nhiều, chủ điểm yếu, so sánh giữa các lớp) và `GET /api/analytics/classes/:id?page=` (các đề của một lớp). Logic tính nằm ở `shared/analytics.ts`, dùng chung cho cả hai phía.

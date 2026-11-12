@@ -414,3 +414,8 @@
 
 .info-chips > button { font-family: inherit; cursor: pointer; transition: border-color 150ms ease, color 150ms ease; }
 .info-chips > button:hover { border-color: #c9c2ef; }
+
+/* Analytics: long lists scroll inside their panel instead of stretching the page. */
+.analytics-scroll { max-height: min(70vh, 720px); overflow-y: auto; overscroll-behavior: contain; }
+.analytics-scroll-sm { max-height: 360px; overflow-y: auto; }
+.analytics-scroll:focus-visible { outline: 2px solid var(--app-accent, #625bc0); outline-offset: -2px; }

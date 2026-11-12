@@ -12,6 +12,7 @@ import { JwtAuthGuard, RolesGuard } from './auth/auth.guards';
 import { UsersModule } from './users/users.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { HealthController } from './health/health.controller';
+import { AnalyticsModule } from './analytics/analytics.module';
 
-@Module({ imports: [DatabaseModule, UsersModule, AuthModule, ClassesModule, StudentsModule, AssessmentsModule, SubmissionsModule, BootstrapModule, AiModule, NotificationsModule], controllers: [HealthController], providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }, { provide: APP_GUARD, useClass: RolesGuard }] })
+@Module({ imports: [DatabaseModule, UsersModule, AuthModule, ClassesModule, StudentsModule, AssessmentsModule, SubmissionsModule, BootstrapModule, AiModule, NotificationsModule, AnalyticsModule], controllers: [HealthController], providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }, { provide: APP_GUARD, useClass: RolesGuard }] })
 export class AppModule {}

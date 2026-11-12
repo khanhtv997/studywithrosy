@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { AlertTriangle, Award, Mail, Search, UsersRound } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { eduApi } from '../../api/client';
 import { useI18n } from '../../i18n';
-import type { Student } from '../../types';
-import { Pagination, usePagination } from '../ui/Pagination';
+import type { Student, StudentPage, StudentRow } from '../../types';
+import { Pagination, useDebounced, useServerPage } from '../ui/Pagination';
 import { SelectField } from '../ui/SelectField';
 import { StudentAvatar } from '../ui/StudentAvatar';
 
@@ -32,7 +32,8 @@ const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
 ];
 
 interface StudentRosterProps {
-  students: Student[];
+  /** Only this class; leave out (or "all") for every class the user teaches. */
+  classId?: string;
   title: string;
   /** Show the class column (the all-students screen); the class page hides it. */
   showClass?: boolean;
@@ -42,30 +43,22 @@ interface StudentRosterProps {
   emptyText?: string;
 }
 
-/** Searchable, filterable student table shared by the class detail and student screens. */
-export function StudentRoster({ students, title, showClass = false, filters, emptyText }: StudentRosterProps) {
-  const { classes, assessments, submissions } = useApp();
+/** Searchable, filterable student table shared by the class detail and student screens; paged on the server. */
+export function StudentRoster({ classId, title, showClass = false, filters, emptyText }: StudentRosterProps) {
   const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<StatusFilter>('all');
 
-  const q = query.trim().toLowerCase();
-  const visible = students.filter(s => {
-    if (q && ![s.name, s.code, s.email].some(value => value.toLowerCase().includes(q))) return false;
-    if (status === 'excellent') return hasGrade(s) && s.averageScore >= 8.5;
-    if (status === 'needs_support') return hasGrade(s) && s.averageScore < 6;
-    if (status === 'ungraded') return !hasGrade(s);
-    return true;
-  });
-  const assignedByClass = (classId: string) => assessments.filter(a => a.classIds.includes(classId) && a.status !== 'draft').length;
+  const q = useDebounced(query.trim());
   const filtered = q !== '' || status !== 'all';
-  // The parent may also change the list (e.g. the class filter), so its size and first id are part of the key.
-  const pager = usePagination(visible, [q, status, students.length, students[0]?.id].join('|'));
+  const pager = useServerPage<StudentRow, StudentPage>(
+    (page, pageSize, signal) => eduApi.studentPage({ page, pageSize, classId, status, q }, signal),
+    [classId, status, q]);
   const statusOptions = STATUS_OPTIONS.map(o => ({ value: o.value, label: t(o.label) }));
 
   return <section className="panel">
     <div className="panel-toolbar">
-      <h2 className="panel-title">{title}<span className="count-pill">{visible.length}</span></h2>
+      <h2 className="panel-title">{title}<span className="count-pill">{pager.total}</span></h2>
       <div className="toolbar-controls">
         {filters}
         <SelectField ariaLabel={t('Lọc theo xếp loại')} value={status} onValueChange={v => setStatus(v as StatusFilter)} options={statusOptions} compact className="w-full sm:w-48" />
@@ -90,7 +83,11 @@ export function StudentRoster({ students, title, showClass = false, filters, emp
           </tr>
         </thead>
         <tbody>
-          {visible.length === 0 ? (
+          {pager.error ? (
+            <tr><td colSpan={showClass ? 7 : 6} className="empty-cell"><span role="alert">{pager.error}</span></td></tr>
+          ) : pager.loading && !pager.data ? (
+            <tr><td colSpan={showClass ? 7 : 6} className="empty-cell"><span>{t('Đang tải...')}</span></td></tr>
+          ) : pager.total === 0 ? (
             <tr><td colSpan={showClass ? 7 : 6} className="empty-cell">
               <UsersRound size={28} aria-hidden="true" />
               <span>{filtered ? t('Không có học sinh nào khớp với bộ lọc.') : emptyText ?? t('Chưa có học sinh nào.')}</span>
@@ -106,7 +103,7 @@ export function StudentRoster({ students, title, showClass = false, filters, emp
               </div>
             </td>
             <td className="font-mono font-semibold text-slate-700 whitespace-nowrap">{s.code}</td>
-            {showClass && <td className="max-w-[220px] truncate text-slate-700" title={classes.find(c => c.id === s.classId)?.name}>{classes.find(c => c.id === s.classId)?.name || '—'}</td>}
+            {showClass && <td className="max-w-[220px] truncate text-slate-700" title={s.className}>{s.className || '—'}</td>}
             <td><span className={`font-bold ${scoreTone(s)}`}>{hasGrade(s) ? `${s.averageScore} / 10` : '—'}</span></td>
             <td><StudentStatusBadge student={s} /></td>
             <td>
@@ -116,7 +113,7 @@ export function StudentRoster({ students, title, showClass = false, filters, emp
               </div>
             </td>
             <td className="text-right font-semibold text-slate-700 whitespace-nowrap">
-              {t('{done} / {total} bài', { done: submissions.filter(sub => sub.studentId === s.id).length, total: assignedByClass(s.classId) })}
+              {t('{done} / {total} bài', { done: s.submittedCount, total: s.assignedCount })}
             </td>
           </tr>)}
         </tbody>

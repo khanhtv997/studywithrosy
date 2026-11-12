@@ -3,6 +3,7 @@ import type {
   AppUser, Assessment, ClassRoom, CreateAssessmentInput, CreateClassInput, CreateStudentInput,
   AiApiKey, AiKeyTestResult, NotificationList, OcrExamResult, Role, StudentImportInput, StudentImportPreview, StudentImportResult, Student, Submission, UpdateAssessmentInput,
   AssessmentShareInfo, CopyAssessmentInput, SharedAssessmentSummary, SharedAssessmentView, StaffMember, UpdateClassInput,
+  AssessmentAnalytics, AssessmentPage, ClassAnalytics, StudentPage, SubmissionPage, UserPage,
 } from '../types';
 
 export interface BootstrapData {
@@ -35,6 +36,18 @@ export const authToken = {
     try { localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); } catch { /* nothing stored */ }
   },
 };
+
+/** Query string from filters; empty values and "all" are left out. */
+export function queryString(params: Record<string, string | number | undefined | null>) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '' || value === 'all') continue;
+    search.set(key, String(value));
+  }
+  const text = search.toString();
+  return text ? `?${text}` : '';
+}
+type PageParams = Record<string, string | number | undefined | null>;
 
 export async function apiRequest<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
   const token = authToken.get();
@@ -84,6 +97,15 @@ export const eduApi = {
 
   /** One request for every role; the server scopes the data to the signed-in user. */
   bootstrap: () => apiRequest<BootstrapData>('bootstrap'),
+  // Paged lists: filtering, counting and paging happen on the server.
+  submissionPage: (params: PageParams, signal?: AbortSignal) => apiRequest<SubmissionPage>(`submissions/page${queryString(params)}`, 'GET', undefined, signal),
+  assessmentPage: (params: PageParams, signal?: AbortSignal) => apiRequest<AssessmentPage>(`assessments/page${queryString(params)}`, 'GET', undefined, signal),
+  studentPage: (params: PageParams, signal?: AbortSignal) => apiRequest<StudentPage>(`students/page${queryString(params)}`, 'GET', undefined, signal),
+  userPage: (params: PageParams, signal?: AbortSignal) => apiRequest<UserPage>(`admin/users/page${queryString(params)}`, 'GET', undefined, signal),
+  assessmentAnalytics: (id: string, classId?: string, signal?: AbortSignal) =>
+    apiRequest<AssessmentAnalytics>(`analytics/assessments/${encodeURIComponent(id)}${queryString({ classId })}`, 'GET', undefined, signal),
+  classAnalytics: (classId: string, params: PageParams, signal?: AbortSignal) =>
+    apiRequest<ClassAnalytics>(`analytics/classes/${encodeURIComponent(classId)}${queryString(params)}`, 'GET', undefined, signal),
 
   createClass: (data: CreateClassInput) => apiRequest<ClassRoom>('classes', 'POST', data),
   updateClass: (id: string, data: UpdateClassInput) => apiRequest<ClassRoom>(`classes/${encodeURIComponent(id)}`, 'PATCH', data),

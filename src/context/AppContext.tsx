@@ -12,6 +12,8 @@ interface AppContextType {
   currentStudentId: string; selectedClassId: string; setSelectedClassId: (id: string) => void;
   classes: ClassRoom[]; students: Student[]; assessments: Assessment[]; submissions: Submission[];
   loading: boolean; error: string | null; clearError: () => void; reloadData: () => Promise<void>; syncData: () => Promise<void>;
+  /** Changes after every data refresh; server-paged tables use it to load again after an edit. */
+  dataVersion: number;
   addClass: (data: CreateClassInput) => Promise<void>;
   addStudent: (data: CreateStudentInput) => Promise<void>;
   createAssessment: (data: CreateAssessmentInput) => Promise<Assessment>;
@@ -34,12 +36,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataVersion, setDataVersion] = useState(0);
 
   const clearData = () => { setClasses([]); setStudents([]); setAssessments([]); setSubmissions([]); setSelectedClassId(''); };
   const refresh = async () => {
     const data = await eduApi.bootstrap();
     setClasses(data.classes); setStudents(data.students); setAssessments(data.assessments); setSubmissions(data.submissions);
     setSelectedClassId(id => data.classes.some(item => item.id === id) ? id : data.classes[0]?.id || '');
+    setDataVersion(v => v + 1);
   };
 
   /** Full reload with the loading strip, used by the "retry" button. */
@@ -113,7 +117,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const currentStudentId = currentUser?.studentId || '';
   const value: AppContextType = {
     currentUser, userRole: currentUser?.role || null, login, logout, changePassword, currentStudentId, selectedClassId, setSelectedClassId,
-    classes, students, assessments, submissions, loading, error, clearError: () => setError(null), reloadData, syncData,
+    classes, students, assessments, submissions, loading, error, clearError: () => setError(null), reloadData, syncData, dataVersion,
     addClass: async data => { const item = await run(() => eduApi.createClass(data)); setSelectedClassId(item.id); },
     addStudent: async data => { await run(() => eduApi.createStudent(data)); },
     createAssessment: data => run(() => eduApi.createAssessment(data)),

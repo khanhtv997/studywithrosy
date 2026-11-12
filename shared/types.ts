@@ -279,3 +279,80 @@ export interface AiApiKey {
 
 /** message is a fixed sentence (translated in the UI); model and detail carry the variable parts. */
 export interface AiKeyTestResult { ok: boolean; message: string; model?: string; detail?: string; }
+
+/* ---- Server-side paging ---- */
+
+/** One page of a list; `total` counts every row matching the filters. */
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** A submission row in the grading list, with the names the table shows. */
+export type SubmissionRow = Submission & { className: string; assessmentTitle: string };
+export interface SubmissionPage extends Page<SubmissionRow> {
+  /** Rows per status tab under the other filters. */
+  counts: { pending: number; published: number; all: number };
+}
+
+export type AssessmentRow = Assessment & { submissionCount: number; pendingCount: number };
+export interface AssessmentPage extends Page<AssessmentRow> {
+  /** Rows per type tab under the other filters. */
+  counts: { all: number; exam: number; homework: number };
+}
+
+export type StudentRow = Student & { className: string; submittedCount: number; assignedCount: number };
+export type StudentPage = Page<StudentRow>;
+
+export interface UserPage extends Page<AppUser> {
+  counts: { all: number; admin: number; teacher: number; student: number };
+}
+
+/* ---- Analytics ---- */
+
+export interface ClassResult {
+  classId: string;
+  className: string;
+  students: number;
+  submitted: number;
+  reviewed: number;
+  /** Average of final scores, or auto scores where not reviewed yet; null without submissions. */
+  avgScore: number | null;
+  completionRate: number;
+}
+
+/** One assessment, optionally narrowed to one class. */
+export interface AssessmentAnalytics {
+  assessment: { id: string; title: string; type: AssessmentType; status: Assessment['status']; dueDate: string; questionCount: number; classIds: string[] };
+  classId: string | null;
+  totals: ClassResult & { highest: number | null; lowest: number | null };
+  byClass: ClassResult[];
+  items: (ItemAnalysis & { wrongStudents: { name: string; answer: string }[] })[];
+  gaps: TopicMastery[];
+}
+
+export interface ClassAssessmentRow {
+  assessmentId: string;
+  title: string;
+  type: AssessmentType;
+  status: Assessment['status'];
+  dueDate: string;
+  questionCount: number;
+  submitted: number;
+  pending: number;
+  avgScore: number | null;
+  completionRate: number;
+}
+
+/** One class: its overall numbers and a page of its assessments. */
+export interface ClassAnalytics extends Page<ClassAssessmentRow> {
+  classId: string;
+  className: string;
+  students: number;
+  assessments: number;
+  avgScore: number | null;
+  completionRate: number;
+  needSupport: number;
+}

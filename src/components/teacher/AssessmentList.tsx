@@ -5,10 +5,10 @@ import { AssignClassesModal } from './AssignClassesModal';
 import { ShareAssessmentModal } from './ShareAssessmentModal';
 import { eduApi } from '../../api/client';
 import { useApp } from '../../context/AppContext';
-import type { Assessment, SharedAssessmentSummary } from '../../types';
+import type { Assessment, AssessmentPage, AssessmentRow, SharedAssessmentSummary } from '../../types';
 import { Button } from '../ui/Button';
 import { PageHeader } from '../ui/PageHeader';
-import { Pagination, usePagination } from '../ui/Pagination';
+import { Pagination, useDebounced, useServerPage } from '../ui/Pagination';
 import { SelectField } from '../ui/SelectField';
 import { Tabs } from '../ui/Tabs';
 import { useI18n } from '../../i18n';
@@ -29,7 +29,7 @@ const STATUS: Record<Assessment['status'], { text: string; badge: string }> = {
 const formatDue = (iso: string, locale: string) => new Date(iso).toLocaleString(locale, { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
 
 export const AssessmentList: React.FC<AssessmentListProps> = ({ onOpenOcr, onSelectAssessmentForGrading, onSelectAssessmentForAnalytics, onPreview }) => {
-  const { assessments, classes, submissions, updateAssessment, deleteAssessment, currentUser } = useApp();
+  const { assessments, classes, updateAssessment, deleteAssessment, currentUser } = useApp();
   const { t, locale } = useI18n();
   const navigate = useNavigate();
   const [view, setView] = useState<'mine' | 'shared'>('mine');
@@ -70,15 +70,12 @@ export const AssessmentList: React.FC<AssessmentListProps> = ({ onOpenOcr, onSel
   };
 
   const classById = new Map(classes.map(c => [c.id, c]));
-  const q = query.trim().toLowerCase();
-  const scoped = assessments.filter(a =>
-    (filterClass === 'all' || a.classIds.includes(filterClass))
-    && (filterStatus === 'all' || a.status === filterStatus)
-    && (!q || a.title.toLowerCase().includes(q)));
-  const visible = scoped
-    .filter(a => filterType === 'all' || a.type === filterType)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const pager = usePagination(visible, [filterType, filterClass, filterStatus, q].join('|'));
+  const q = useDebounced(query.trim());
+  // Filtering, per-type counts, submission counts and paging happen on the server, newest first.
+  const pager = useServerPage<AssessmentRow, AssessmentPage>(
+    (page, pageSize, signal) => eduApi.assessmentPage({ page, pageSize, type: filterType, classId: filterClass, status: filterStatus, q }, signal),
+    [filterType, filterClass, filterStatus, q]);
+  const typeCounts = pager.data?.counts ?? { all: 0, exam: 0, homework: 0 };
 
   return (
     <div className="page-stack">
@@ -95,9 +92,9 @@ export const AssessmentList: React.FC<AssessmentListProps> = ({ onOpenOcr, onSel
       <section className="panel">
         <div className="panel-toolbar">
           <Tabs ariaLabel={t('Loại bài')} value={filterType} onChange={setFilterType} options={[
-            { value: 'all', label: t('Tất cả'), count: scoped.length },
-            { value: 'exam', label: t('Bài kiểm tra'), count: scoped.filter(a => a.type === 'exam').length },
-            { value: 'homework', label: t('Bài tập về nhà'), count: scoped.filter(a => a.type === 'homework').length },
+            { value: 'all', label: t('Tất cả'), count: typeCounts.all },
+            { value: 'exam', label: t('Bài kiểm tra'), count: typeCounts.exam },
+            { value: 'homework', label: t('Bài tập về nhà'), count: typeCounts.homework },
           ]} />
           <div className="toolbar-controls">
             <SelectField ariaLabel={t('Lọc theo lớp')} value={filterClass} onValueChange={setFilterClass} compact className="w-full sm:w-52"
@@ -124,14 +121,17 @@ export const AssessmentList: React.FC<AssessmentListProps> = ({ onOpenOcr, onSel
               </tr>
             </thead>
             <tbody>
-              {pager.total === 0 ? (
+              {pager.error ? (
+                <tr><td colSpan={6} className="empty-cell"><span role="alert">{pager.error}</span></td></tr>
+              ) : pager.loading && !pager.data ? (
+                <tr><td colSpan={6} className="empty-cell"><span>{t('Đang tải...')}</span></td></tr>
+              ) : pager.total === 0 ? (
                 <tr><td colSpan={6} className="empty-cell">
                   <FileText size={28} aria-hidden="true" />
                   <span>{assessments.length ? t('Không có bài nào khớp với bộ lọc.') : t('Chưa có bài nào. Bấm “Tạo đề từ tài liệu” để bắt đầu.')}</span>
                 </td></tr>
               ) : pager.pageItems.map(item => {
-                const itemSubmissions = submissions.filter(s => s.assessmentId === item.id);
-                const pending = itemSubmissions.filter(s => s.status === 'pending_review').length;
+                const pending = item.pendingCount;
                 const overdue = item.status === 'published' && new Date(item.dueDate).getTime() < Date.now();
                 return <tr key={item.id}>
                   <td className="min-w-[240px] max-w-[360px]">
@@ -154,7 +154,7 @@ export const AssessmentList: React.FC<AssessmentListProps> = ({ onOpenOcr, onSel
                     {formatDue(item.dueDate, locale)}{overdue && <div className="text-[11px] font-normal">{t('Đã quá hạn')}</div>}
                   </td>
                   <td className="whitespace-nowrap">
-                    <div className="text-slate-500">{t('{count} bài', { count: itemSubmissions.length })}</div>
+                    <div className="text-slate-500">{t('{count} bài', { count: item.submissionCount })}</div>
                     {pending > 0 && <span className="badge badge-warning mt-1">{t('{count} chờ duyệt', { count: pending })}</span>}
                   </td>
                   <td>

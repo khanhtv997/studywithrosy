@@ -90,6 +90,20 @@ const en: Record<string, string> = {
   'Đang giao...': 'Assigning...',
   'Lưu vào đề của tôi (nháp)': 'Save to my tests (draft)',
 
+  // Analytics
+  'Xem kết quả theo từng đề hoặc theo từng lớp: câu nhiều học sinh làm sai, chủ điểm cần ôn và mức độ hoàn thành.': 'See results by test or by class: questions many students got wrong, topics to revise and how much work was handed in.',
+  'Cách xem': 'View',
+  'Theo đề': 'By test',
+  'Theo lớp': 'By class',
+  'Chưa có đề nào đã giao cho lớp này.': 'No test has been assigned to this class yet.',
+  'Chưa có bài nộp để phân tích.': 'No submissions to analyse yet.',
+  'Kết quả theo lớp': 'Results by class',
+  'Đã duyệt': 'Reviewed',
+  'Các đề của {className}': 'Tests of {className}',
+  'Tỷ lệ nộp bài chung: {rate}%': 'Overall submission rate: {rate}%',
+  'Lớp chưa được giao đề nào.': 'This class has no tests yet.',
+  'Xem chi tiết': 'View details',
+
   // Server messages in Vietnamese
   'Hãy chọn ít nhất một lớp trước khi giao bài.': 'Choose at least one class before assigning.',
   'Liên kết chia sẻ không còn hiệu lực hoặc bạn không được chia sẻ đề này.': 'The share link no longer works, or this test was not shared with you.',

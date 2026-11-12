@@ -3,14 +3,14 @@ import confetti from 'canvas-confetti';
 import { AlertCircle, Award, BookOpen, Check, CheckCircle2, ClipboardCheck, Search, Send, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { eduApi } from '../../api/client';
-import type { Submission } from '../../types';
+import type { Submission, SubmissionPage, SubmissionRow } from '../../types';
 import { isAnswerCorrect } from '../../utils/assessmentLogic';
 import { Modal } from '../ui/Modal';
 import { QuestionReview } from '../ui/QuestionReview';
 import { SelectField } from '../ui/SelectField';
 import { PageHeader } from '../ui/PageHeader';
 import { Button } from '../ui/Button';
-import { Pagination, usePagination } from '../ui/Pagination';
+import { Pagination, useDebounced, useServerPage } from '../ui/Pagination';
 import { Tabs } from '../ui/Tabs';
 import { StudentAvatar } from '../ui/StudentAvatar';
 import { useI18n } from '../../i18n';
@@ -28,7 +28,7 @@ function parseScore(value: string): number | null {
 }
 
 export const GradingReview: React.FC<GradingReviewProps> = ({ initialAssessmentId }) => {
-  const { assessments, classes, students, submissions, reviewSubmission } = useApp();
+  const { assessments, classes, submissions, reviewSubmission } = useApp();
   const { t, locale } = useI18n();
 
   const [filterAssessmentId, setFilterAssessmentId] = useState<string>(initialAssessmentId || 'all');
@@ -46,8 +46,6 @@ export const GradingReview: React.FC<GradingReviewProps> = ({ initialAssessmentI
   const [query, setQuery] = useState('');
 
   const assessmentById = new Map(assessments.map(a => [a.id, a]));
-  const classById = new Map(classes.map(c => [c.id, c]));
-  const studentClassId = new Map(students.map(s => [s.id, s.classId]));
   const assessmentOptions = filterClassId === 'all' ? assessments : assessments.filter(a => a.classIds.includes(filterClassId));
   const changeClass = (classId: string) => {
     setFilterClassId(classId);
@@ -55,24 +53,12 @@ export const GradingReview: React.FC<GradingReviewProps> = ({ initialAssessmentI
     if (classId !== 'all' && !assessmentById.get(filterAssessmentId)?.classIds.includes(classId)) setFilterAssessmentId('all');
   };
 
-  const q = query.trim().toLowerCase();
-  /** Everything except the status filter, so the tab counts match what each tab would show. */
-  const scoped = submissions.filter((sub) => {
-    if (filterAssessmentId !== 'all' && sub.assessmentId !== filterAssessmentId) return false;
-    if (filterClassId !== 'all' && studentClassId.get(sub.studentId) !== filterClassId) return false;
-    if (q && !sub.studentName.toLowerCase().includes(q)) return false;
-    return true;
-  });
-  const statusCounts = {
-    pending: scoped.filter(s => s.status === 'pending_review').length,
-    published: scoped.filter(s => s.status === 'published').length,
-    all: scoped.length,
-  };
-  const filteredSubmissions = scoped
-    .filter((sub) => filterStatus === 'all' || (filterStatus === 'pending' ? sub.status === 'pending_review' : sub.status === 'published'))
-    // Oldest pending first so nothing waits forever; reviewed work newest first.
-    .sort((a, b) => filterStatus === 'pending' ? a.submittedAt.localeCompare(b.submittedAt) : b.submittedAt.localeCompare(a.submittedAt));
-  const pager = usePagination(filteredSubmissions, [filterStatus, filterClassId, filterAssessmentId, q].join('|'));
+  const q = useDebounced(query.trim());
+  // Filtering, per-status counts and paging happen on the server (oldest pending first, reviewed newest first).
+  const pager = useServerPage<SubmissionRow, SubmissionPage>(
+    (page, pageSize, signal) => eduApi.submissionPage({ page, pageSize, status: filterStatus, classId: filterClassId, assessmentId: filterAssessmentId, q }, signal),
+    [filterStatus, filterClassId, filterAssessmentId, q]);
+  const statusCounts = pager.data?.counts ?? { pending: 0, published: 0, all: 0 };
 
   const pendingCount = submissions.filter((s) => s.status === 'pending_review').length;
   const selectedAssessment = selectedSubmission ? assessments.find((a) => a.id === selectedSubmission.assessmentId) : undefined;
@@ -173,13 +159,16 @@ export const GradingReview: React.FC<GradingReviewProps> = ({ initialAssessmentI
               </tr>
             </thead>
             <tbody>
-              {pager.total === 0 ? (
+              {pager.error ? (
+                <tr><td colSpan={8} className="empty-cell"><span role="alert">{pager.error}</span></td></tr>
+              ) : pager.loading && !pager.data ? (
+                <tr><td colSpan={8} className="empty-cell"><span>{t('Đang tải...')}</span></td></tr>
+              ) : pager.total === 0 ? (
                 <tr><td colSpan={8} className="empty-cell">
                   <ClipboardCheck size={28} aria-hidden="true" />
                   <span>{filterStatus === 'pending' && !query && filterAssessmentId === 'all' && filterClassId === 'all' ? t('Không còn bài nào chờ duyệt.') : t('Không có bài nộp nào khớp với bộ lọc.')}</span>
                 </td></tr>
               ) : pager.pageItems.map((sub) => {
-                const assessment = assessmentById.get(sub.assessmentId);
                 const isPending = sub.status === 'pending_review';
                 return (
                   <tr key={sub.id}>
@@ -189,8 +178,8 @@ export const GradingReview: React.FC<GradingReviewProps> = ({ initialAssessmentI
                         <span className="whitespace-nowrap font-bold text-slate-900">{sub.studentName}</span>
                       </div>
                     </td>
-                    <td className="max-w-[260px]"><span className="line-clamp-2 font-medium text-slate-800" title={assessment?.title}>{assessment?.title ?? t('Bài đã xóa')}</span></td>
-                    <td className="max-w-[200px] truncate text-slate-600" title={classById.get(studentClassId.get(sub.studentId) ?? '')?.name}>{classById.get(studentClassId.get(sub.studentId) ?? '')?.name ?? '—'}</td>
+                    <td className="max-w-[260px]"><span className="line-clamp-2 font-medium text-slate-800" title={sub.assessmentTitle}>{sub.assessmentTitle || t('Bài đã xóa')}</span></td>
+                    <td className="max-w-[200px] truncate text-slate-600" title={sub.className}>{sub.className || '—'}</td>
                     <td className="whitespace-nowrap text-slate-600">{formatTime(sub.submittedAt, locale)}</td>
                     <td className="text-center font-semibold text-slate-700">{sub.autoScore}</td>
                     <td className="text-center font-bold">{sub.finalScore !== null ? <span className="text-emerald-600">{sub.finalScore}</span> : <span className="text-slate-400">—</span>}</td>

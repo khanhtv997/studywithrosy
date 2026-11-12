@@ -1,7 +1,6 @@
-import { useSearchParams } from 'react-router';
 import { TeacherAnalytics } from '../components/teacher/TeacherAnalytics';
 
+/** ?view=class&class=… or ?assessment=…&class=… choose what is shown (links from the test list use ?assessment=). */
 export function AnalyticsPage() {
-  const [params] = useSearchParams();
-  return <TeacherAnalytics initialAssessmentId={params.get('assessment') || undefined} />;
+  return <TeacherAnalytics />;
 }

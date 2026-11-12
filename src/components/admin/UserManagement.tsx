@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { GraduationCap, KeyRound, Plus, Search, ShieldCheck, UserRoundCog, UsersRound } from 'lucide-react';
-import type { AppUser, Role } from '../../types';
+import type { AppUser, Role, UserPage } from '../../types';
 import { eduApi } from '../../api/client';
 import { useApp } from '../../context/AppContext';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { PageHeader, StatCard } from '../ui/PageHeader';
-import { Pagination, usePagination } from '../ui/Pagination';
+import { Pagination, useDebounced, useServerPage } from '../ui/Pagination';
 import { SelectField } from '../ui/SelectField';
 import { useI18n } from '../../i18n';
 
@@ -21,8 +21,6 @@ export const UserManagement: React.FC = () => {
   const { students, currentUser } = useApp();
   const { t } = useI18n();
   const roleOpts = roleOptions.map(option => ({ ...option, label: t(option.label) }));
-  const [users, setUsers] = useState<AppUser[]>([]);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -35,18 +33,17 @@ export const UserManagement: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const studentOptions = students.map(student => ({ value: student.id, label: `${student.name} (${student.code})` }));
 
-  const load = async () => {
-    setLoading(true);
-    try { setUsers(await eduApi.users()); setError(''); }
-    catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { void load(); }, []);
+  const q = useDebounced(query.trim());
+  // Search, role filter and paging happen on the server; counts are system-wide totals per role.
+  const pager = useServerPage<AppUser, UserPage>(
+    (page, pageSize, signal) => eduApi.userPage({ page, pageSize, role: roleFilter, q }, signal),
+    [roleFilter, q]);
+  const counts = pager.data?.counts ?? { all: 0, admin: 0, teacher: 0, student: 0 };
 
   /** Runs an action, reloads the list and reports the result; returns false on failure. */
   const act = async (action: () => Promise<unknown>, message: string, onError = setError) => {
     setBusy(true); setError(''); setNotice('');
-    try { await action(); await load(); setNotice(message); return true; }
+    try { await action(); pager.reload(); setNotice(message); return true; }
     catch (cause) { onError(cause instanceof Error ? cause.message : String(cause)); return false; }
     finally { setBusy(false); }
   };
@@ -73,10 +70,6 @@ export const UserManagement: React.FC = () => {
     if (await act(() => eduApi.resetPassword(passwordUser.id, newPassword), t('Đã đổi mật khẩu cho {email}.', { email: passwordUser.email }))) setPasswordUser(null);
   };
 
-  const q = query.trim().toLowerCase();
-  const visible = users.filter(u => (roleFilter === 'all' || u.role === roleFilter) && (!q || [u.name, u.email].some(v => v.toLowerCase().includes(q))));
-  const pager = usePagination(visible, `${roleFilter}|${q}`);
-  const countOf = (role: Role) => users.filter(u => u.role === role).length;
 
   return <div className="page-stack">
     <PageHeader icon={UserRoundCog} title={t('Tài khoản & phân quyền')}
@@ -87,15 +80,15 @@ export const UserManagement: React.FC = () => {
     {notice && <p role="status" className="form-notice">{notice}</p>}
 
     <div className="stat-grid">
-      <StatCard icon={UsersRound} label={t('Tổng số tài khoản')} value={users.length} />
-      <StatCard icon={ShieldCheck} label={t('Quản trị')} value={countOf('admin')} tone="rose" />
-      <StatCard icon={UserRoundCog} label={t('Giáo viên')} value={countOf('teacher')} tone="amber" />
-      <StatCard icon={GraduationCap} label={t('Học sinh')} value={countOf('student')} tone="emerald" />
+      <StatCard icon={UsersRound} label={t('Tổng số tài khoản')} value={counts.all} />
+      <StatCard icon={ShieldCheck} label={t('Quản trị')} value={counts.admin} tone="rose" />
+      <StatCard icon={UserRoundCog} label={t('Giáo viên')} value={counts.teacher} tone="amber" />
+      <StatCard icon={GraduationCap} label={t('Học sinh')} value={counts.student} tone="emerald" />
     </div>
 
     <section className="panel">
       <div className="panel-toolbar">
-        <h2 className="panel-title">{t('Danh sách tài khoản')}<span className="count-pill">{visible.length}</span></h2>
+        <h2 className="panel-title">{t('Danh sách tài khoản')}<span className="count-pill">{pager.total}</span></h2>
         <div className="toolbar-controls">
           <SelectField ariaLabel={t('Lọc theo vai trò')} value={roleFilter} onValueChange={v => setRoleFilter(v as typeof roleFilter)} compact className="w-full sm:w-44"
             options={[{ value: 'all', label: t('Tất cả vai trò') }, ...roleOpts]} />
@@ -106,10 +99,10 @@ export const UserManagement: React.FC = () => {
         </div>
       </div>
       <div className="overflow-x-auto">
-        {loading ? <p className="empty-state">{t('Đang tải danh sách tài khoản...')}</p> :
+        {pager.error ? <p role="alert" className="empty-state">{pager.error}</p> : pager.loading && !pager.data ? <p className="empty-state">{t('Đang tải danh sách tài khoản...')}</p> :
           <table className="data-table min-w-[820px]">
             <thead><tr><th>{t('Người dùng')}</th><th>{t('Vai trò')}</th><th>{t('Học sinh liên kết')}</th><th>{t('Trạng thái')}</th><th className="text-right">{t('Mật khẩu')}</th></tr></thead>
-            <tbody>{visible.length === 0
+            <tbody>{pager.total === 0
               ? <tr><td colSpan={5} className="empty-cell"><UsersRound size={28} aria-hidden="true" /><span>{t('Không có tài khoản nào khớp với bộ lọc.')}</span></td></tr>
               : pager.pageItems.map(user => <tr key={user.id}>
                 <td><div className="font-bold text-slate-900">{user.name}</div><div className="text-[12px] text-slate-500">{user.email}</div></td>

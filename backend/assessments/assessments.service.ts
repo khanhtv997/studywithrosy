@@ -1,7 +1,9 @@
 import { BadRequestException, ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomBytes, randomUUID } from 'node:crypto';
+import { z } from 'zod';
+import { likePattern, optionalFilter, pageFields, SqlFilter, toNumber } from '../common/paging';
 import type {
-  AppUser, Assessment, AssessmentShareInfo, SharedAssessmentSummary, SharedAssessmentView, StaffMember,
+  AppUser, Assessment, AssessmentPage, AssessmentShareInfo, SharedAssessmentSummary, SharedAssessmentView, StaffMember,
 } from '../../shared/types';
 import { ClassesService } from '../classes/classes.service';
 import { validate } from '../common/validate';
@@ -9,6 +11,13 @@ import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StudentsService } from '../students/students.service';
 import { copySchema, createAssessmentSchema, shareSchema, updateAssessmentSchema } from './assessments.dto';
+
+const assessmentPageSchema = z.object({
+  ...pageFields,
+  type: z.enum(['all', 'exam', 'homework']).default('all'),
+  classId: optionalFilter,
+  status: z.enum(['all', 'draft', 'published', 'closed']).default('all'),
+});
 
 const totalPoints = (item: Pick<Assessment, 'questions'>) => item.questions.reduce((sum, q) => sum + q.points, 0);
 const unique = (ids: string[]) => [...new Set(ids)];
@@ -52,6 +61,42 @@ export class AssessmentsService {
     const scope = await this.classes.scopeFor(user);
     if (scope === null) return this.findAll();
     return this.repo().whereSql(`owner_id = $1 OR data->'classIds' ?| $2::text[]`, [user.id, scope]);
+  }
+
+  /** The assessment list: visible ones, filtered, counted per type and paged in SQL, newest first. */
+  async page(user: AppUser, query: unknown): Promise<AssessmentPage> {
+    const { page, pageSize, q, type, classId, status } = validate(assessmentPageSchema, query);
+    const scope = await this.classes.scopeFor(user);
+    const f = new SqlFilter();
+    if (scope) {
+      const me = f.param(user.id);
+      f.add(p => `a.owner_id = ${me} OR a.data->'classIds' ?| ${p}::text[]`, scope);
+    }
+    if (classId) f.add(p => `a.data->'classIds' ? ${p}`, classId);
+    if (status !== 'all') f.add(p => `a.data->>'status' = ${p}`, status);
+    if (q) f.add(p => `a.data->>'title' ILIKE ${p}`, likePattern(q));
+
+    const [counts] = await this.db.query<{ all: string; exam: string; homework: string }>(
+      `SELECT count(*) AS "all", count(*) FILTER (WHERE a.data->>'type' = 'exam') AS exam,
+              count(*) FILTER (WHERE a.data->>'type' = 'homework') AS homework
+       FROM assessments a ${f.where()}`, [...f.values]);
+
+    const typeSql = type === 'all' ? '' : `a.data->>'type' = ${f.param(type)}`;
+    // Submission counts only include students the user may see.
+    const scopeParam = f.param(scope);
+    const visibleSubs = `FROM submissions s JOIN students st ON st.id = s.student_id
+      WHERE s.assessment_id = a.id AND (${scopeParam}::text[] IS NULL OR st.class_id = ANY(${scopeParam}::text[]))`;
+    const rows = await this.db.query<{ data: Assessment; submission_count: string; pending_count: string }>(
+      `SELECT a.data, (SELECT count(*) ${visibleSubs}) AS submission_count,
+              (SELECT count(*) ${visibleSubs} AND s.data->>'status' = 'pending_review') AS pending_count
+       FROM assessments a ${f.where(typeSql)}
+       ORDER BY a.data->>'createdAt' DESC, a.id ${f.limit(page, pageSize)}`, f.values);
+
+    const countsOut = { all: toNumber(counts.all), exam: toNumber(counts.exam), homework: toNumber(counts.homework) };
+    return {
+      items: rows.map(r => ({ ...r.data, submissionCount: toNumber(r.submission_count), pendingCount: toNumber(r.pending_count) })),
+      total: countsOut[type], page, pageSize, counts: countsOut,
+    };
   }
 
   /** Assessments open to a student's class. */

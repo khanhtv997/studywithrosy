@@ -41,7 +41,7 @@ export function StudentManagement() {
       <StatCard icon={GraduationCap} label={t('Cần bồi dưỡng')} value={graded.filter(s => s.averageScore < 6).length} tone="rose" />
     </div>
 
-    <StudentRoster title={t('Danh sách học sinh')} students={visible} showClass={classFilter === 'all'}
+    <StudentRoster title={t('Danh sách học sinh')} classId={classFilter} showClass={classFilter === 'all'}
       filters={<SelectField ariaLabel={t('Lọc theo lớp')} value={classFilter} onValueChange={setClassFilter} compact className="w-full sm:w-60"
         options={[{ value: 'all', label: t('Tất cả các lớp') }, ...classes.map(c => ({ value: c.id, label: c.name }))]} />} />
 

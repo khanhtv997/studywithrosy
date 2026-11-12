@@ -2,7 +2,9 @@ import { BadRequestException, ConflictException, Inject, Injectable, NotFoundExc
 import { randomUUID } from 'node:crypto';
 import { compare, hash } from 'bcryptjs';
 import { DatabaseService } from '../database/database.service';
-import type { AppUser, Role, StaffMember } from '../../shared/types';
+import { z } from 'zod';
+import type { AppUser, Role, StaffMember, UserPage } from '../../shared/types';
+import { likePattern, pageFields, SqlFilter, toNumber } from '../common/paging';
 import { validate } from '../common/validate';
 import { createUserSchema, ownPasswordSchema, passwordSchema, updateUserSchema } from './users.dto';
 
@@ -10,12 +12,30 @@ export type { Role };
 export type PublicUser = AppUser;
 export interface UserRecord extends AppUser { passwordHash: string; }
 
+const userPageSchema = z.object({ ...pageFields, role: z.enum(['all', 'admin', 'teacher', 'student']).default('all') });
+
 @Injectable()
 export class UsersService {
   constructor(@Inject(DatabaseService) private readonly db: DatabaseService) {}
   private readonly columns = 'id, email, name, role, student_id AS "studentId", active, must_change_password AS "mustChangePassword", password_hash AS "passwordHash", created_at AS "createdAt"';
   publicUser(user: UserRecord): PublicUser { const { passwordHash: _hash, ...safe } = user; return safe; }
   async all() { return (await this.db.query<UserRecord>(`SELECT ${this.columns} FROM users ORDER BY created_at, id`)).map(user => this.publicUser(user)); }
+  /** The account table: filtered by role and search and paged in SQL; `counts` are totals per role for the whole system. */
+  async page(query: unknown): Promise<UserPage> {
+    const { page, pageSize, q, role } = validate(userPageSchema, query);
+    const [counts] = await this.db.query<Record<'all' | Role, string>>(
+      `SELECT count(*) AS "all", count(*) FILTER (WHERE role = 'admin') AS admin,
+              count(*) FILTER (WHERE role = 'teacher') AS teacher, count(*) FILTER (WHERE role = 'student') AS student
+       FROM users`);
+    const f = new SqlFilter();
+    if (q) f.add(p => `name ILIKE ${p} OR email ILIKE ${p}`, likePattern(q));
+    if (role !== 'all') f.add(p => `role = ${p}`, role);
+    const [{ total }] = await this.db.query<{ total: string }>(`SELECT count(*) AS total FROM users ${f.where()}`, [...f.values]);
+    const rows = await this.db.query<UserRecord>(`SELECT ${this.columns} FROM users ${f.where()} ORDER BY created_at, id ${f.limit(page, pageSize)}`, f.values);
+    const countsOut = { all: toNumber(counts.all), admin: toNumber(counts.admin), teacher: toNumber(counts.teacher), student: toNumber(counts.student) };
+    return { items: rows.map(user => this.publicUser(user)), total: toNumber(total), page, pageSize, counts: countsOut };
+  }
+
   /** Active teachers and admins, without anything private. */
   staff() { return this.db.query<StaffMember>(`SELECT id, name, email, role FROM users WHERE active AND role IN ('teacher', 'admin') ORDER BY name, id`); }
   async byId(id: string) { return (await this.db.query<UserRecord>(`SELECT ${this.columns} FROM users WHERE id = $1`, [id]))[0]; }

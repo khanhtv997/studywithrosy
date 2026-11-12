@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Header, Inject, Param, Post, StreamableFile } from '@nestjs/common';
+import { Body, Controller, Get, Header, Inject, Param, Post, Query, StreamableFile } from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { StudentImportService } from './student-import.service';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
@@ -32,6 +32,7 @@ export class StudentsController {
     return this.importer.commit(body);
   }
 
+  @Get('page') page(@Query() query: unknown, @CurrentUser() user: PublicUser) { return this.students.page(user, query); }
   @Get(':id') get(@Param('id') id: string, @CurrentUser() user: PublicUser) { return this.students.findOneFor(user, id); }
   @Post() create(@Body() body: unknown, @CurrentUser() user: PublicUser) { return this.students.create(body, user); }
 }
