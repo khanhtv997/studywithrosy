@@ -1,4 +1,4 @@
-# EduAssess on a server that already runs Docker and has PostgreSQL installed on the host (not in Docker).
+# EduPath on a server that already runs Docker and has PostgreSQL installed on the host (not in Docker).
 # Usage: cp .env.production.example .env.production  (fill it in), then: docker compose up -d --build
 services:
   eduassess:

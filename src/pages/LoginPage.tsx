@@ -30,12 +30,12 @@ export const LoginPage: React.FC = () => {
     <div className="login-ambient login-ambient-one" aria-hidden="true" />
     <div className="login-ambient login-ambient-two" aria-hidden="true" />
     <div className="login-shell">
-      <section className="login-story" aria-label={t('Giới thiệu EduAssess')}>
+      <section className="login-story" aria-label={t('Giới thiệu EduPath')}>
         <div className="login-story-grid" aria-hidden="true" />
         <div className="login-orb login-orb-one" aria-hidden="true" />
         <div className="login-orb login-orb-two" aria-hidden="true" />
         <div className="login-story-content">
-          <div className="login-brand login-brand-light"><span className="login-brand-icon"><BrandLogo size={40} /></span><span>EduAssess</span></div>
+          <div className="login-brand login-brand-light"><span className="login-brand-icon"><BrandLogo size={40} /></span><span>EduPath</span></div>
           <div className="login-story-copy">
             <span className="login-kicker"><Sparkles size={14}/> {t('Không gian học tập thông minh')}</span>
             <h1>{t('Học tốt hơn.')}<br/><span>{t('Tiến xa hơn.')}</span></h1>
@@ -59,7 +59,7 @@ export const LoginPage: React.FC = () => {
       </section>
 
       <section className="login-panel" aria-label={t('Đăng nhập')}>
-        <div className="login-mobile-brand login-brand"><span className="login-brand-icon"><BrandLogo size={36} /></span><span>EduAssess</span></div>
+        <div className="login-mobile-brand login-brand"><span className="login-brand-icon"><BrandLogo size={36} /></span><span>EduPath</span></div>
         <div className="login-panel-inner">
           <div className="login-welcome-icon"><span><BrandLogo size={56} /></span></div>
           <div className="login-panel-heading"><span className="login-eyebrow">{t('CHÀO MỪNG TRỞ LẠI')}</span><h2>{t('Rất vui được gặp bạn!')}</h2><p>{t('Đăng nhập để tiếp tục hành trình học tập của mình.')}</p></div>
@@ -71,7 +71,7 @@ export const LoginPage: React.FC = () => {
           </form>
           <p className="login-security"><ShieldCheck size={16} aria-hidden="true"/> {t('Tài khoản của bạn được bảo vệ')}</p>
         </div>
-        <p className="login-panel-footer">© {new Date().getFullYear()} EduAssess · {t('Học tập theo cách của bạn')}</p>
+        <p className="login-panel-footer">© {new Date().getFullYear()} EduPath · {t('Học tập theo cách của bạn')}</p>
       </section>
     </div>
   </main>;

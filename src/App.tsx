@@ -25,7 +25,7 @@ import type { AppUser } from './types';
 
 function AppLoading() {
   const { t } = useI18n();
-  return <div className="app-loading-screen" role="status">{t('Đang tải EduAssess...')}</div>;
+  return <div className="app-loading-screen" role="status">{t('Đang tải EduPath...')}</div>;
 }
 
 function LoginRoute() {

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# EduAssess: one container serving the API (/api) and the built web app on the same port.
+# EduPath: one container serving the API (/api) and the built web app on the same port.
 
 # ---- 1. Install all dependencies and build the web app (dist/) ----
 FROM node:22-bookworm-slim AS build

@@ -44,7 +44,7 @@ const en: Record<string, string> = {
   'Đổi mật khẩu': 'Change password',
   'Đăng xuất': 'Sign out',
   'Ngôn ngữ': 'Language',
-  'Đang tải EduAssess...': 'Loading EduAssess...',
+  'Đang tải EduPath...': 'Loading EduPath...',
 
   // ---- Notifications ----
   'Thông báo': 'Notifications',

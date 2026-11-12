@@ -1,4 +1,4 @@
-# Triển khai EduAssess lên server Ubuntu (Docker + PostgreSQL cài trên máy)
+# Triển khai EduPath lên server Ubuntu (Docker + PostgreSQL cài trên máy)
 
 App chạy trong **một container**. Container này phục vụ cả giao diện lẫn API (`/api`) trên cùng một cổng và kết nối tới PostgreSQL cài sẵn trên Ubuntu (không chạy trong Docker). Reverse proxy đang có trên server (nginx, Caddy, Traefik…) đưa app ra tên miền kèm HTTPS.
 
@@ -97,7 +97,7 @@ Nếu cổng 3001 đã có service khác dùng, đặt cổng khác cho containe
 ```bash
 docker compose up -d --build
 docker compose ps                     # STATUS phải là "healthy" sau khoảng 30–60 giây
-docker compose logs -f eduassess      # có dòng "EduAssess API: ..." là đã chạy
+docker compose logs -f eduassess      # có dòng "EduPath API: ..." là đã chạy
 curl http://127.0.0.1:3001/api/health # {"ok":true}
 ```
 

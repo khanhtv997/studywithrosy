@@ -1,6 +1,7 @@
 import { ChevronRight, GraduationCap, PanelLeftClose, PanelLeftOpen, Sparkles, X } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { BrandLogo } from '../components/ui/BrandLogo';
+import { DonateButton } from '../components/ui/DonateButton';
 import { useApp } from '../context/AppContext';
 import { useI18n } from '../i18n';
 import { navigationFor } from './navigation';
@@ -26,7 +27,7 @@ export function Sidebar({ mobileOpen, isDesktop, collapsed, onToggleCollapsed, o
     inert={!isDesktop && !mobileOpen} aria-label={t('Điều hướng chính')}>
     <div className="app-sidebar-brand">
       <span className="app-sidebar-logo"><BrandLogo size={40} /></span>
-      <span className="app-sidebar-wordmark"><strong>EduAssess</strong><small>{t('Không gian học tập')}</small></span>
+      <span className="app-sidebar-wordmark"><strong>EduPath</strong><small>{t('Không gian học tập')}</small></span>
       <button type="button" className="app-sidebar-close" aria-label={t('Đóng menu')} onClick={onClose}><X size={20}/></button>
     </div>
     <div className="app-sidebar-scroll">
@@ -55,6 +56,7 @@ export function Sidebar({ mobileOpen, isDesktop, collapsed, onToggleCollapsed, o
           ? t('{className} đang chờ em khám phá.', { className: studentClass || t('Lớp của em') })
           : t('Tổ chức bài học, theo dõi tiến độ và đưa ra phản hồi kịp thời.')}</p>
       </div>
+      <DonateButton variant="sidebar" rail={rail} onOpen={onClose} />
     </div>
     <div className="app-sidebar-bottom">
       {isDesktop ? (

@@ -66,7 +66,7 @@ export function Header({ page, onMenuClick, menuOpen }: HeaderProps) {
   return <header className="app-header">
     <div className="app-header-leading">
       <button type="button" className="app-header-menu" aria-label={menuOpen ? t('Đóng menu') : t('Mở menu')} aria-controls="app-sidebar" aria-expanded={menuOpen} onClick={onMenuClick}><Menu size={22}/></button>
-      <div className="app-header-title"><span className="app-header-eyebrow">EduAssess</span><strong>{t(page.title)}</strong></div>
+      <div className="app-header-title"><span className="app-header-eyebrow">EduPath</span><strong>{t(page.title)}</strong></div>
     </div>
     <div className="app-header-actions">
       <LanguageSwitcher className="app-header-lang" />

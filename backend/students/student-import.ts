@@ -20,7 +20,7 @@ const normalizeHeader = (value: string) => value
 /** The blank template teachers fill in: one data sheet plus a sheet of instructions. */
 export async function buildTemplate(): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'EduAssess';
+  workbook.creator = 'EduPath';
   const sheet = workbook.addWorksheet(SHEET_NAME, { views: [{ state: 'frozen', ySplit: 1 }] });
   sheet.columns = [
     { header: 'Họ và tên *', key: 'name', width: 32 },

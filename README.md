@@ -1,4 +1,4 @@
-# EduAssess
+# EduPath
 
 Ứng dụng React/Vite, API NestJS và PostgreSQL cài trên máy. Frontend lấy lớp, học sinh, đề thi và bài nộp từ API; dữ liệu được lưu trong database `eduassess`, không dùng mảng mock của frontend.
 

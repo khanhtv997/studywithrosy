@@ -248,7 +248,7 @@ const en: Record<string, string> = {
 
   // Login
   'Không thể đăng nhập. Vui lòng thử lại.': "Couldn't sign in. Please try again.",
-  'Giới thiệu EduAssess': 'About EduAssess',
+  'Giới thiệu EduPath': 'About EduPath',
   'Không gian học tập thông minh': 'A smart space for learning',
   'Học tốt hơn.': 'Learn better.',
   'Tiến xa hơn.': 'Go further.',

@@ -139,6 +139,12 @@ const en: Record<string, string> = {
   'Xoá tất cả {count} highlight?': 'Remove all {count} highlights?',
   'Xoá tất cả highlight': 'Remove all highlights',
   'Thao tác khác: {title}': 'More actions: {title}',
+  'Mời mình một ly cà phê': 'Buy me a coffee',
+  'Nếu EduPath giúp ích cho việc dạy và học, bạn có thể mời mình một ly cà phê để duy trì máy chủ và làm thêm tính năng mới. Cảm ơn bạn rất nhiều!':
+    'If EduPath helps your teaching and learning, you can buy me a coffee to keep the server running and build new features. Thank you so much!',
+  'Mã QR chuyển khoản Techcombank (VietQR)': 'Techcombank transfer QR code (VietQR)',
+  'Mở ứng dụng ngân hàng hoặc ví điện tử, chọn quét mã QR (VietQR · Napas 247).': 'Open your banking or e-wallet app and scan the QR code (VietQR · Napas 247).',
+  'Tải mã QR': 'Download QR code',
   'Đóng bài': 'Close',
   'Chỉ người tạo đề mới xoá được': 'Only the author can delete this test',
   'Công cụ': 'Tools',
