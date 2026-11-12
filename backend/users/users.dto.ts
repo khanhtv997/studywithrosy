@@ -16,3 +16,8 @@ export const updateUserSchema = z.object({
 export const passwordSchema = z.object({ password: z.string().min(8) });
 export const ownPasswordSchema = z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(8) })
   .refine(d => d.newPassword !== d.currentPassword, { path: ['newPassword'], message: 'New password must differ from the current one' });
+export const approvalSchema = z.object({
+  approval: z.enum(['approved', 'rejected']),
+  role: role.optional(),
+  studentId: z.string().nullable().optional(),
+});

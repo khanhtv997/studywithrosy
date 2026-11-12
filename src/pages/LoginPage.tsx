@@ -1,14 +1,16 @@
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 import React, { useState } from 'react';
-import { ArrowRight, BookOpenCheck, ChartNoAxesCombined, ClipboardCheck, Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpenCheck, ChartNoAxesCombined, ClipboardCheck, Eye, EyeOff, Hourglass, LockKeyhole, Mail, ShieldCheck, Sparkles, UserX } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { GoogleSignIn } from '../components/auth/GoogleSignIn';
 import { BrandLogo } from '../components/ui/BrandLogo';
 import { useI18n } from '../i18n';
 import './login.css';
 
 export const LoginPage: React.FC = () => {
-  const { login } = useApp();
+  const { login, loginWithGoogle } = useApp();
   const { t } = useI18n();
+  const [waiting, setWaiting] = useState<{ status: 'pending' | 'rejected'; name: string; email: string } | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,6 +23,18 @@ export const LoginPage: React.FC = () => {
     setBusy(true);
     setError('');
     try { await login(email.trim(), password); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : t('Không thể đăng nhập. Vui lòng thử lại.')); }
+    finally { setBusy(false); }
+  };
+
+  const google = async (credential: string) => {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      const result = await loginWithGoogle(credential);
+      if (result.status !== 'ok') setWaiting(result);
+    }
     catch (cause) { setError(cause instanceof Error ? cause.message : t('Không thể đăng nhập. Vui lòng thử lại.')); }
     finally { setBusy(false); }
   };
@@ -63,12 +77,23 @@ export const LoginPage: React.FC = () => {
         <div className="login-panel-inner">
           <div className="login-welcome-icon"><span><BrandLogo size={56} /></span></div>
           <div className="login-panel-heading"><span className="login-eyebrow">{t('CHÀO MỪNG TRỞ LẠI')}</span><h2>{t('Rất vui được gặp bạn!')}</h2><p>{t('Đăng nhập để tiếp tục hành trình học tập của mình.')}</p></div>
+          {waiting ? <div className="login-waiting" role="status">
+            <span className={`login-waiting-icon ${waiting.status === 'rejected' ? 'is-rejected' : ''}`}>{waiting.status === 'rejected' ? <UserX size={26} aria-hidden="true" /> : <Hourglass size={26} aria-hidden="true" />}</span>
+            <h3>{waiting.status === 'rejected' ? t('Tài khoản chưa được chấp nhận') : t('Tài khoản đang chờ phê duyệt')}</h3>
+            <p><strong>{waiting.name}</strong><br /><span>{waiting.email}</span></p>
+            <p>{waiting.status === 'rejected'
+              ? t('Quản trị viên chưa chấp nhận tài khoản này. Hãy liên hệ quản trị viên nếu bạn nghĩ đây là nhầm lẫn.')
+              : t('Tài khoản giáo viên của bạn đã được tạo. Quản trị viên sẽ xem và phê duyệt; sau đó bạn đăng nhập lại bằng Google là dùng được ngay.')}</p>
+            <button type="button" className="login-back" onClick={() => setWaiting(null)}><ArrowLeft size={16} aria-hidden="true" />{t('Quay lại đăng nhập')}</button>
+          </div> : <>
           <form onSubmit={submit} className="login-form">
             {error && <div role="alert" className="login-error">{error}</div>}
             <label className="login-field"><span>{t('Email hoặc tên đăng nhập')}</span><span className="login-input-wrap"><Mail size={19} aria-hidden="true"/><input type="text" required autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder={t('tenban@example.com hoặc giaovien')} value={email} onChange={e => setEmail(e.target.value)} disabled={busy} /></span></label>
             <label className="login-field"><span>{t('Mật khẩu')}</span><span className="login-input-wrap"><LockKeyhole size={19} aria-hidden="true"/><input type={showPassword ? 'text' : 'password'} required autoComplete="current-password" placeholder={t('Nhập mật khẩu của bạn')} value={password} onChange={e => setPassword(e.target.value)} disabled={busy} /><button type="button" className="login-password-toggle" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? t('Ẩn mật khẩu') : t('Hiện mật khẩu')} aria-pressed={showPassword}>{showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}</button></span></label>
             <button className="login-submit" type="submit" disabled={busy}><span>{busy ? t('Đang đăng nhập...') : t('Đăng nhập')}</span>{busy ? <span className="login-spinner" aria-hidden="true"/> : <ArrowRight size={19} aria-hidden="true"/>}</button>
           </form>
+          <GoogleSignIn onCredential={google} onError={setError} disabled={busy} />
+          </>}
           <p className="login-security"><ShieldCheck size={16} aria-hidden="true"/> {t('Tài khoản của bạn được bảo vệ')}</p>
         </div>
         <p className="login-panel-footer">© {new Date().getFullYear()} EduPath · {t('Học tập theo cách của bạn')}</p>

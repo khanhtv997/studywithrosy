@@ -29,8 +29,23 @@ export interface AppUser {
   active: boolean;
   /** True until the user replaces a password given to them (import, admin reset). */
   mustChangePassword: boolean;
+  /** Accounts that sign up with Google wait for an admin ("pending") before they can use the app. */
+  approval: Approval;
+  /** Whether a Google account is linked (the user can sign in with Google). */
+  googleLinked: boolean;
+  avatarUrl: string | null;
   createdAt: string;
 }
+
+export type Approval = 'pending' | 'approved' | 'rejected';
+
+/** What the login page needs to know before anyone signs in. */
+export interface AuthConfig { googleClientId: string | null }
+
+/** Result of signing in with Google: a session, or why there is none yet. */
+export type GoogleLoginResult =
+  | { status: 'ok'; accessToken: string; user: AppUser }
+  | { status: 'pending' | 'rejected'; name: string; email: string };
 
 export interface Question {
   id: string;
@@ -166,7 +181,7 @@ export function isChoiceQuestion(question: Pick<Question, 'type' | 'options'>): 
   return (question.type === 'multiple_choice' || question.type === 'reading_comprehension') && !!question.options?.length;
 }
 
-export type NotificationType = 'assessment_published' | 'submission_received' | 'submission_reviewed' | 'assessment_shared';
+export type NotificationType = 'assessment_published' | 'submission_received' | 'submission_reviewed' | 'assessment_shared' | 'account_pending' | 'account_approved';
 
 /** A teacher or admin, as other teachers see them (for sharing and class assignment). */
 export interface StaffMember {
@@ -351,7 +366,8 @@ export type StudentRow = Student & { className: string; submittedCount: number; 
 export type StudentPage = Page<StudentRow>;
 
 export interface UserPage extends Page<AppUser> {
-  counts: { all: number; admin: number; teacher: number; student: number };
+  /** `pending`: accounts waiting for approval (they are left out of the role counts until approved). */
+  counts: { all: number; admin: number; teacher: number; student: number; pending: number };
 }
 
 /* ---- Analytics ---- */

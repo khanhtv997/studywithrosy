@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
-import { Bell, CheckCheck, ClipboardCheck, FileText, GraduationCap, Share2 } from 'lucide-react';
+import { BadgeCheck, Bell, CheckCheck, ClipboardCheck, FileText, GraduationCap, Share2, UserRoundPlus } from 'lucide-react';
 import { eduApi } from '../api/client';
 import { useApp } from '../context/AppContext';
 import { currentLocale, translate, useI18n } from '../i18n';
@@ -13,6 +13,8 @@ const TYPE_ICON: Record<NotificationType, typeof Bell> = {
   submission_received: ClipboardCheck,
   submission_reviewed: GraduationCap,
   assessment_shared: Share2,
+  account_pending: UserRoundPlus,
+  account_approved: BadgeCheck,
 };
 
 /** "vừa xong", "5 phút trước", "3 ngày trước", then a date. */

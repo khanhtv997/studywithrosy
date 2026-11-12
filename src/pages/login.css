@@ -129,3 +129,21 @@
   .login-submit:hover { transform: none; }
 }
 @keyframes login-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Google sign-in and the "waiting for approval" message. */
+.login-google { display: grid; justify-items: center; gap: 14px; margin-top: 22px; }
+.login-divider { display: flex; align-items: center; gap: 12px; width: 100%; color: #a0a3b2; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.login-divider::before, .login-divider::after { content: ''; flex: 1; height: 1px; background: #eceef5; }
+.login-google-button { display: flex; justify-content: center; width: 100%; max-width: 400px; min-height: 44px; }
+.login-google-button.is-disabled { opacity: .55; pointer-events: none; }
+.login-google-hint { max-width: 360px; margin: 0; color: #8a8fa5; font-size: 11.5px; line-height: 1.55; text-align: center; }
+
+.login-waiting { display: grid; justify-items: center; gap: 12px; margin-top: 32px; padding: 26px 22px; border: 1px solid #ece9f8; border-radius: 18px; background: #faf9ff; text-align: center; }
+.login-waiting-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 18px; color: #b7791f; background: #fff4dc; }
+.login-waiting-icon.is-rejected { color: #be123c; background: #fff1f2; }
+.login-waiting h3 { margin: 0; color: #24284a; font-size: 18px; font-weight: 800; }
+.login-waiting p { margin: 0; color: #5d6380; font-size: 13px; line-height: 1.6; }
+.login-waiting p span { color: #8a8fa5; font-size: 12px; }
+.login-back { display: inline-flex; align-items: center; gap: 7px; margin-top: 4px; padding: 9px 16px; border: 1px solid #dcd9f2; border-radius: 999px; color: #4b44a3; background: #fff; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.login-back:hover { background: #f4f3fd; }
+.login-back:focus-visible { outline: 2px solid #625bc0; outline-offset: 2px; }

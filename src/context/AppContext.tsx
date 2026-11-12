@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type {
   AppUser, Assessment, ClassRoom, CreateAssessmentInput, CreateClassInput, CreateStudentInput,
-  Role, Student, Submission, UpdateAssessmentInput,
+  GoogleLoginResult, Role, Student, Submission, UpdateAssessmentInput,
 } from '../types';
 import { authToken, eduApi, SESSION_EXPIRED_EVENT, TOKEN_KEY } from '../api/client';
 
 interface AppContextType {
   currentUser: AppUser | null; userRole: Role | null;
   login: (email: string, password: string) => Promise<void>; logout: () => void;
+  loginWithGoogle: (credential: string) => Promise<GoogleLoginResult>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   currentStudentId: string; selectedClassId: string; setSelectedClassId: (id: string) => void;
   classes: ClassRoom[]; students: Student[]; assessments: Assessment[]; submissions: Submission[];
@@ -89,9 +90,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => { window.removeEventListener(SESSION_EXPIRED_EVENT, signedOut); window.removeEventListener('storage', onStorage); };
   }, []);
 
+  /** Signs in with a Google credential; an account still waiting for approval gets no session. */
+  const loginWithGoogle = async (credential: string): Promise<GoogleLoginResult> => {
+    setError(null);
+    const result = await eduApi.googleLogin(credential);
+    if (result.status !== 'ok') return result;
+    await startSession(result);
+    return result;
+  };
   const login = async (email: string, password: string) => {
     setError(null);
-    const result = await eduApi.login(email, password);
+    await startSession(await eduApi.login(email, password));
+  };
+  const startSession = async (result: { accessToken: string; user: AppUser }) => {
     authToken.set(result.accessToken);
     if (result.user.mustChangePassword) { setCurrentUser(result.user); return; }
     try { await refresh(); setCurrentUser(result.user); }
@@ -116,7 +127,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const currentStudentId = currentUser?.studentId || '';
   const value: AppContextType = {
-    currentUser, userRole: currentUser?.role || null, login, logout, changePassword, currentStudentId, selectedClassId, setSelectedClassId,
+    currentUser, userRole: currentUser?.role || null, login, loginWithGoogle, logout, changePassword, currentStudentId, selectedClassId, setSelectedClassId,
     classes, students, assessments, submissions, loading, error, clearError: () => setError(null), reloadData, syncData, dataVersion,
     addClass: async data => { const item = await run(() => eduApi.createClass(data)); setSelectedClassId(item.id); },
     addStudent: async data => { await run(() => eduApi.createStudent(data)); },

@@ -4,6 +4,7 @@ import type {
   AiApiKey, AiKeyTestResult, NotificationList, OcrExamResult, Role, StudentImportInput, StudentImportPreview, StudentImportResult, Student, Submission, UpdateAssessmentInput,
   AssessmentShareInfo, CopyAssessmentInput, SharedAssessmentSummary, SharedAssessmentView, StaffMember, UpdateClassInput,
   AssessmentAnalytics, AssessmentPage, ClassAnalytics, StudentPage, SubmissionPage, UserPage, AiSuggestion, AiSuggestionResult, ReviewAnnotations,
+  Approval, AuthConfig, GoogleLoginResult,
 } from '../types';
 
 export interface BootstrapData {
@@ -59,7 +60,7 @@ export async function apiRequest<T>(path: string, method = 'GET', body?: unknown
   });
   const payload = await response.json().catch(() => null);
   // A saved sign-in that the server no longer accepts: forget it and go back to the login page.
-  if (response.status === 401 && token && path !== 'auth/login') {
+  if (response.status === 401 && token && path !== 'auth/login' && path !== 'auth/google') {
     authToken.clear();
     window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
   }
@@ -88,11 +89,14 @@ export async function downloadFile(path: string, fallbackName: string) {
 export const eduApi = {
   login: (email: string, password: string) => apiRequest<{ accessToken: string; user: AppUser }>('auth/login', 'POST', { email, password }),
   me: () => apiRequest<AppUser>('auth/me'),
+  authConfig: () => apiRequest<AuthConfig>('auth/config'),
+  googleLogin: (credential: string) => apiRequest<GoogleLoginResult>('auth/google', 'POST', { credential }),
   changeOwnPassword: (currentPassword: string, newPassword: string) => apiRequest<AppUser>('auth/password', 'PATCH', { currentPassword, newPassword }),
 
   users: () => apiRequest<AppUser[]>('admin/users'),
   createUser: (data: { email: string; name: string; role: Role; password: string; studentId?: string | null }) => apiRequest<AppUser>('admin/users', 'POST', data),
   updateUser: (id: string, data: Partial<Pick<AppUser, 'email' | 'name' | 'role' | 'studentId' | 'active'>>) => apiRequest<AppUser>(`admin/users/${id}`, 'PATCH', data),
+  setApproval: (id: string, approval: Exclude<Approval, 'pending'>, role?: Role) => apiRequest<AppUser>(`admin/users/${id}/approval`, 'PATCH', { approval, ...(role ? { role } : {}) }),
   resetPassword: (id: string, password: string) => apiRequest<{ success: boolean }>(`admin/users/${id}/password`, 'PATCH', { password }),
 
   /** One request for every role; the server scopes the data to the signed-in user. */

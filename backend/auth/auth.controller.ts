@@ -7,6 +7,9 @@ import { UsersService, type PublicUser } from '../users/users.service';
 export class AuthController {
   constructor(@Inject(AuthService) private readonly auth: AuthService, @Inject(UsersService) private readonly users: UsersService) {}
   @Public() @Post('login') login(@Body() body: unknown) { return this.auth.login(body); }
+  /** Whether Google sign-in is offered, and with which client ID (set on the server, so no rebuild is needed). */
+  @Public() @Get('config') config() { return this.auth.config(); }
+  @Public() @Post('google') google(@Body() body: unknown) { return this.auth.loginWithGoogle(body); }
   @AllowPendingPasswordChange() @Get('me') me(@CurrentUser() user: PublicUser) { return user; }
   /** Any signed-in user changes their own password; required after an import or an admin reset. */
   @AllowPendingPasswordChange() @Patch('password') changePassword(@CurrentUser() user: PublicUser, @Body() body: unknown) {

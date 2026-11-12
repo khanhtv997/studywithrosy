@@ -118,6 +118,12 @@ const migrations = [
     updated_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (assessment_id, user_id)
   );`,
+  // Google sign-in: the Google account an EduPath user is linked to, and an admin approval step
+  // for accounts that sign up by themselves. Existing accounts are approved.
+  `ALTER TABLE users ADD COLUMN google_sub text UNIQUE;
+  ALTER TABLE users ADD COLUMN avatar_url text;
+  ALTER TABLE users ADD COLUMN approval text NOT NULL DEFAULT 'approved' CHECK (approval IN ('pending', 'approved', 'rejected'));
+  CREATE INDEX idx_users_approval ON users(approval) WHERE approval <> 'approved';`,
 ];
 
 @Injectable()

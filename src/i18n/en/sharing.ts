@@ -139,6 +139,29 @@ const en: Record<string, string> = {
   'Xoá tất cả {count} highlight?': 'Remove all {count} highlights?',
   'Xoá tất cả highlight': 'Remove all highlights',
   'Thao tác khác: {title}': 'More actions: {title}',
+  // Google sign-in and account approval
+  'hoặc': 'or',
+  'Giáo viên mới: đăng nhập bằng Google để tạo tài khoản. Quản trị viên sẽ duyệt trước khi bạn sử dụng.':
+    'New teacher? Sign in with Google to create an account. An administrator approves it before you can use the app.',
+  'Không tải được nút đăng nhập Google. Hãy kiểm tra mạng và tải lại trang.': 'The Google sign-in button did not load. Check your connection and reload the page.',
+  'Tài khoản chưa được chấp nhận': 'Account not approved',
+  'Tài khoản đang chờ phê duyệt': 'Waiting for approval',
+  'Quản trị viên chưa chấp nhận tài khoản này. Hãy liên hệ quản trị viên nếu bạn nghĩ đây là nhầm lẫn.':
+    'An administrator did not approve this account. Contact them if you think this is a mistake.',
+  'Tài khoản giáo viên của bạn đã được tạo. Quản trị viên sẽ xem và phê duyệt; sau đó bạn đăng nhập lại bằng Google là dùng được ngay.':
+    'Your teacher account has been created. An administrator will review and approve it; then sign in with Google again and you are ready to go.',
+  'Quay lại đăng nhập': 'Back to sign in',
+  'Đã duyệt {email}. Tài khoản đã dùng được.': 'Approved {email}. The account can now be used.',
+  'Từ chối tài khoản {email}? Người này sẽ không đăng nhập được.': 'Reject {email}? This person will not be able to sign in.',
+  'Đã từ chối {email}.': 'Rejected {email}.',
+  'Có {count} tài khoản giáo viên đăng ký bằng Google đang chờ duyệt.': '{count} teacher account(s) signed up with Google and are waiting for approval.',
+  'Xem và duyệt': 'Review',
+  'Chờ phê duyệt': 'Pending approval',
+  'Đã từ chối': 'Rejected',
+  'Duyệt': 'Approve',
+  'Duyệt lại': 'Approve',
+  'Từ chối': 'Reject',
+  'Đăng nhập được bằng Google': 'Can sign in with Google',
   'Mời mình một ly cà phê': 'Buy me a coffee',
   'Nếu EduPath giúp ích cho việc dạy và học, bạn có thể mời mình một ly cà phê để duy trì máy chủ và làm thêm tính năng mới. Cảm ơn bạn rất nhiều!':
     'If EduPath helps your teaching and learning, you can buy me a coffee to keep the server running and build new features. Thank you so much!',

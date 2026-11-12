@@ -158,6 +158,28 @@ Khi đó có thể bỏ mục `ports:`. Nhớ tăng giới hạn body (30 MB) v�
 3. Menu **Khoá API AI** → **Thêm khoá**: dán khoá Gemini lấy từ aistudio.google.com rồi bấm **Kiểm tra**.
 4. Tạo tài khoản giáo viên ở **Tài khoản**, tạo lớp, rồi nhập học sinh bằng Excel.
 
+### Đăng nhập bằng Google (tuỳ chọn)
+
+Giáo viên mới bấm **Tiếp tục với Google** ở trang đăng nhập. Hệ thống tạo tài khoản **giáo viên ở trạng thái chờ duyệt** và báo cho quản trị viên (chuông thông báo). Quản trị viên vào **Tài khoản** → **Chờ phê duyệt** → **Duyệt** (hoặc **Từ chối**). Sau khi được duyệt, giáo viên đăng nhập lại bằng Google là dùng được ngay.
+
+Tài khoản có sẵn (do admin tạo) mà trùng email Google thì được liên kết luôn, không phải duyệt lại.
+
+Cách bật:
+
+1. Vào https://console.cloud.google.com → tạo (hoặc chọn) một project.
+2. **APIs & Services → OAuth consent screen**: chọn **External**, điền tên app (EduPath), email hỗ trợ, rồi **Publish app**. Chỉ cần các quyền mặc định (email, profile).
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
+   - Application type: **Web application**
+   - **Authorized JavaScript origins**: `https://studywithrosy.site` (thêm `http://localhost:3000` nếu muốn thử ở máy)
+   - Không cần Redirect URI.
+4. Copy **Client ID** (dạng `xxxx.apps.googleusercontent.com`) và thêm vào `.env.production`:
+   ```
+   GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+   ```
+5. `docker compose up -d` để nạp lại cấu hình (không cần build lại). Nút Google sẽ hiện ở trang đăng nhập.
+
+Chỉ cần Client ID, **không** dùng Client secret. Server tự kiểm tra chữ ký của Google cho mỗi lần đăng nhập.
+
 ## 7. Chuyển dữ liệu từ máy đang chạy thử (tuỳ chọn)
 
 Trên máy cũ:

@@ -34,6 +34,13 @@ const vi: Record<string, string> = {
   'Only the owner can do this': 'Chỉ người tạo đề mới làm được việc này',
   'Teacher not found': 'Không tìm thấy giáo viên',
   'Only admins can change the teachers of a class': 'Chỉ quản trị viên mới đổi được giáo viên phụ trách lớp',
+  'Your account is waiting for an administrator to approve it': 'Tài khoản của bạn đang chờ quản trị viên phê duyệt',
+  'Your account was not approved. Contact the administrator.': 'Tài khoản của bạn chưa được chấp nhận. Hãy liên hệ quản trị viên.',
+  'Google sign-in is not set up on this server': 'Máy chủ chưa bật đăng nhập bằng Google',
+  'Google sign-in failed. Please try again.': 'Đăng nhập Google không thành công. Vui lòng thử lại.',
+  'This Google account has no verified email address': 'Tài khoản Google này chưa xác minh email',
+  'This email is already linked to another Google account': 'Email này đã liên kết với một tài khoản Google khác',
+  'You cannot change the approval of your own account': 'Bạn không thể tự duyệt tài khoản của chính mình',
 };
 
 export default vi;

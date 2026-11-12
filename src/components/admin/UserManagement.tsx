@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { GraduationCap, KeyRound, Plus, Search, ShieldCheck, UserRoundCog, UsersRound } from 'lucide-react';
+import { useSearchParams } from 'react-router';
+import { Check, GraduationCap, Hourglass, KeyRound, Plus, Search, ShieldCheck, UserRoundCog, UsersRound, X } from 'lucide-react';
 import type { AppUser, Role, UserPage } from '../../types';
 import { eduApi } from '../../api/client';
 import { useApp } from '../../context/AppContext';
@@ -9,6 +10,7 @@ import { PageHeader, StatCard } from '../ui/PageHeader';
 import { Pagination, useDebounced, useServerPage } from '../ui/Pagination';
 import { SelectField } from '../ui/SelectField';
 import { useI18n } from '../../i18n';
+import './approval.css';
 
 const roleOptions: { value: Role; label: string }[] = [
   { value: 'admin', label: 'Quản trị' },
@@ -26,6 +28,10 @@ export const UserManagement: React.FC = () => {
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | Role>('all');
+  // "?status=pending" (from the new-account notification) opens the list of accounts waiting for approval.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const pendingOnly = searchParams.get('status') === 'pending';
+  const setPendingOnly = (on: boolean) => setSearchParams(prev => { const next = new URLSearchParams(prev); if (on) next.set('status', 'pending'); else next.delete('status'); return next; }, { replace: true });
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
@@ -36,9 +42,15 @@ export const UserManagement: React.FC = () => {
   const q = useDebounced(query.trim());
   // Search, role filter and paging happen on the server; counts are system-wide totals per role.
   const pager = useServerPage<AppUser, UserPage>(
-    (page, pageSize, signal) => eduApi.userPage({ page, pageSize, role: roleFilter, q }, signal),
-    [roleFilter, q]);
-  const counts = pager.data?.counts ?? { all: 0, admin: 0, teacher: 0, student: 0 };
+    (page, pageSize, signal) => eduApi.userPage({ page, pageSize, role: roleFilter, q, status: pendingOnly ? 'pending' : 'all' }, signal),
+    [roleFilter, q, pendingOnly]);
+  const counts = pager.data?.counts ?? { all: 0, admin: 0, teacher: 0, student: 0, pending: 0 };
+  const approve = (user: AppUser) => act(() => eduApi.setApproval(user.id, 'approved', user.role),
+    t('Đã duyệt {email}. Tài khoản đã dùng được.', { email: user.email }));
+  const reject = (user: AppUser) => {
+    if (!window.confirm(t('Từ chối tài khoản {email}? Người này sẽ không đăng nhập được.', { email: user.email }))) return;
+    void act(() => eduApi.setApproval(user.id, 'rejected'), t('Đã từ chối {email}.', { email: user.email }));
+  };
 
   /** Runs an action, reloads the list and reports the result; returns false on failure. */
   const act = async (action: () => Promise<unknown>, message: string, onError = setError) => {
@@ -86,10 +98,19 @@ export const UserManagement: React.FC = () => {
       <StatCard icon={GraduationCap} label={t('Học sinh')} value={counts.student} tone="emerald" />
     </div>
 
+    {counts.pending > 0 && !pendingOnly && <div className="approval-banner" role="status">
+      <Hourglass size={18} aria-hidden="true" />
+      <span>{t('Có {count} tài khoản giáo viên đăng ký bằng Google đang chờ duyệt.', { count: counts.pending })}</span>
+      <Button size="sm" onClick={() => setPendingOnly(true)}>{t('Xem và duyệt')}</Button>
+    </div>}
+
     <section className="panel">
       <div className="panel-toolbar">
         <h2 className="panel-title">{t('Danh sách tài khoản')}<span className="count-pill">{pager.total}</span></h2>
         <div className="toolbar-controls">
+          <button type="button" className={`approval-filter ${pendingOnly ? 'is-on' : ''}`} aria-pressed={pendingOnly} onClick={() => setPendingOnly(!pendingOnly)}>
+            <Hourglass size={14} aria-hidden="true" />{t('Chờ phê duyệt')}<span>{counts.pending}</span>
+          </button>
           <SelectField ariaLabel={t('Lọc theo vai trò')} value={roleFilter} onValueChange={v => setRoleFilter(v as typeof roleFilter)} compact className="w-full sm:w-44"
             options={[{ value: 'all', label: t('Tất cả vai trò') }, ...roleOpts]} />
           <label className="search-field">
@@ -105,13 +126,19 @@ export const UserManagement: React.FC = () => {
             <tbody>{pager.total === 0
               ? <tr><td colSpan={5} className="empty-cell"><UsersRound size={28} aria-hidden="true" /><span>{t('Không có tài khoản nào khớp với bộ lọc.')}</span></td></tr>
               : pager.pageItems.map(user => <tr key={user.id}>
-                <td><div className="font-bold text-slate-900">{user.name}</div><div className="text-[12px] text-slate-500">{user.email}</div></td>
+                <td><div className="font-bold text-slate-900">{user.name}</div><div className="text-[12px] text-slate-500">{user.email}{user.googleLinked && <span className="google-pill" title={t('Đăng nhập được bằng Google')}>Google</span>}</div></td>
                 <td><SelectField ariaLabel={t('Vai trò của {name}', { name: user.name })} disabled={busy || user.id === currentUser?.id} value={user.role} onValueChange={value => changeRole(user, value as Role)} options={roleOpts} compact className="w-32" /></td>
                 <td><SelectField ariaLabel={t('Học sinh của {name}', { name: user.name })} disabled={busy} value={user.studentId || ''} onValueChange={value => linkStudent(user, value)} options={studentOptions} placeholder={t('Chưa liên kết')} compact className="w-60" /></td>
-                <td><button type="button" disabled={busy || user.id === currentUser?.id} title={user.id === currentUser?.id ? t('Không thể khóa tài khoản đang đăng nhập') : user.active ? t('Bấm để khóa') : t('Bấm để mở khóa')}
+                <td>{user.approval !== 'approved' ? <div className="approval-cell">
+                  <span className={`badge ${user.approval === 'pending' ? 'badge-warning' : 'badge-muted'}`}>{user.approval === 'pending' ? t('Chờ phê duyệt') : t('Đã từ chối')}</span>
+                  <div className="approval-actions">
+                    <Button size="sm" disabled={busy} onClick={() => void approve(user)}><Check size={14} aria-hidden="true" />{user.approval === 'pending' ? t('Duyệt') : t('Duyệt lại')}</Button>
+                    {user.approval === 'pending' && <Button size="sm" variant="ghost" disabled={busy} onClick={() => reject(user)}><X size={14} aria-hidden="true" />{t('Từ chối')}</Button>}
+                  </div>
+                </div> : <><button type="button" disabled={busy || user.id === currentUser?.id} title={user.id === currentUser?.id ? t('Không thể khóa tài khoản đang đăng nhập') : user.active ? t('Bấm để khóa') : t('Bấm để mở khóa')}
                   onClick={() => void act(() => eduApi.updateUser(user.id, { active: !user.active }), user.active ? t('Đã khóa {email}.', { email: user.email }) : t('Đã mở khóa {email}.', { email: user.email }))}
                   className={`badge ${user.active ? 'badge-success' : 'badge-muted'} disabled:cursor-default`}>{user.active ? t('Đang hoạt động') : t('Đã khóa')}</button>
-                  {user.mustChangePassword && <div className="mt-1"><span className="badge badge-warning" title={t('Đăng nhập lần tới phải đổi mật khẩu')}>{t('Chờ đổi mật khẩu')}</span></div>}</td>
+                  {user.mustChangePassword && <div className="mt-1"><span className="badge badge-warning" title={t('Đăng nhập lần tới phải đổi mật khẩu')}>{t('Chờ đổi mật khẩu')}</span></div>}</>}</td>
                 <td className="text-right"><Button variant="ghost" size="sm" disabled={busy} onClick={() => { setNewPassword(''); setPasswordUser(user); }}><KeyRound size={14} aria-hidden="true" />{t('Đặt lại')}</Button></td>
               </tr>)}</tbody>
           </table>}
