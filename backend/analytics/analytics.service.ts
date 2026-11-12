@@ -1,4 +1,4 @@
-import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { BLANK_ANSWER, computeItemAnalysis, computeKnowledgeGaps } from '../../shared/analytics';
@@ -6,6 +6,7 @@ import { isAnswerCorrect } from '../../shared/grading';
 import type { AiSuggestion, AiSuggestionResult, AppUser, AssessmentAnalytics, ClassAnalytics, ClassAssessmentRow, ClassResult, Submission } from '../../shared/types';
 import { AiService } from '../ai/ai.service';
 import { AssessmentsService } from '../assessments/assessments.service';
+import { visibleAssessmentSql } from '../assessments/visibility';
 import { ClassesService } from '../classes/classes.service';
 import { optionalFilter, pageFields, round1, SqlFilter, toNumber } from '../common/paging';
 import { validate } from '../common/validate';
@@ -38,13 +39,17 @@ export class AnalyticsService {
   private suggestionColumns = `s.id, s.assessment_id AS "assessmentId", s.class_id AS "classId", s.content, s.submitted,
     s.avg_score::float AS "avgScore", s.created_at AS "createdAt", s.created_by AS "createdById", COALESCE(u.name, '') AS "createdByName"`;
 
-  /** History for an assessment and class choice (null = all the user's classes), newest first. */
+  /**
+   * History for an assessment and class choice (null = all the user's classes), newest first.
+   * A teacher sees only the suggestions they asked for; an admin sees everyone's.
+   */
   async suggestions(user: AppUser, id: string, query: unknown): Promise<AiSuggestion[]> {
     const { classId } = validate(assessmentQuerySchema, query);
     await this.assessment(user, id, { classId }); // same access rules as the analytics themselves
     return this.db.query<AiSuggestion>(
       `SELECT ${this.suggestionColumns} FROM ai_suggestions s LEFT JOIN users u ON u.id = s.created_by
-       WHERE s.assessment_id = $1 AND s.class_id IS NOT DISTINCT FROM $2 ORDER BY s.created_at DESC LIMIT 30`, [id, classId ?? null]);
+       WHERE s.assessment_id = $1 AND s.class_id IS NOT DISTINCT FROM $2 AND ($3::boolean OR s.created_by = $4)
+       ORDER BY s.created_at DESC LIMIT 30`, [id, classId ?? null, user.role === 'admin', user.id]);
   }
 
   /** Asks the AI for a new suggestion from the current results and keeps it in the history. */
@@ -78,7 +83,8 @@ export class AnalyticsService {
       'SELECT assessment_id, class_id, created_by FROM ai_suggestions WHERE id = $1', [suggestionId]);
     if (!row) throw new NotFoundException('Suggestion not found');
     await this.assessment(user, row.assessment_id, { classId: row.class_id ?? undefined });
-    if (user.role !== 'admin' && row.created_by && row.created_by !== user.id) throw new ForbiddenException('Only the person who made it can delete it');
+    // A teacher cannot even see someone else's suggestion, so it is "not found" for them.
+    if (user.role !== 'admin' && row.created_by !== user.id) throw new NotFoundException('Suggestion not found');
     await this.db.query('DELETE FROM ai_suggestions WHERE id = $1', [suggestionId]);
     return { id: suggestionId };
   }
@@ -135,24 +141,32 @@ export class AnalyticsService {
   async classView(user: AppUser, classId: string, query: unknown): Promise<ClassAnalytics> {
     const { page, pageSize } = validate(classQuerySchema, query);
     const classroom = await this.classes.findOneFor(user, classId);
+    const scope = await this.classes.scopeFor(user);
 
+    // Only the user's own tests count (another teacher of the same class keeps theirs to themselves).
+    const sf = new SqlFilter();
+    const cls = sf.param(classId);
+    const visible = visibleAssessmentSql(user, scope, sf);
+    const visibleAnd = visible ? `${visible} AND` : '';
     const [summary] = await this.db.query<{ students: string; assessments: string; submitted: string; avg: string | null; need_support: string }>(
-      `SELECT (SELECT count(*) FROM students st WHERE st.class_id = $1) AS students,
-              (SELECT count(*) FROM assessments a WHERE a.data->'classIds' ? $1 AND a.data->>'status' <> 'draft') AS assessments,
+      `SELECT (SELECT count(*) FROM students st WHERE st.class_id = ${cls}) AS students,
+              (SELECT count(*) FROM assessments a WHERE ${visibleAnd} a.data->'classIds' ? ${cls} AND a.data->>'status' <> 'draft') AS assessments,
               (SELECT count(*) FROM submissions s JOIN students st ON st.id = s.student_id
                  JOIN assessments a ON a.id = s.assessment_id
-                WHERE st.class_id = $1 AND a.data->'classIds' ? $1) AS submitted,
+                WHERE ${visibleAnd} st.class_id = ${cls} AND a.data->'classIds' ? ${cls}) AS submitted,
               (SELECT avg(${SCORE_SQL}) FROM submissions s JOIN students st ON st.id = s.student_id
                  JOIN assessments a ON a.id = s.assessment_id
-                WHERE st.class_id = $1 AND a.data->'classIds' ? $1) AS avg,
-              (SELECT count(*) FROM students st WHERE st.class_id = $1
+                WHERE ${visibleAnd} st.class_id = ${cls} AND a.data->'classIds' ? ${cls}) AS avg,
+              (SELECT count(*) FROM students st WHERE st.class_id = ${cls}
                  AND COALESCE((st.data->>'completedCount')::int, 0) > 0 AND COALESCE((st.data->>'averageScore')::numeric, 0) < 6) AS need_support`,
-      [classId]);
+      sf.values);
     const students = toNumber(summary.students);
     const assessmentCount = toNumber(summary.assessments);
 
     const f = new SqlFilter();
     f.add(p => `a.data->'classIds' ? ${p}`, classId);
+    const visibleRows = visibleAssessmentSql(user, scope, f);
+    if (visibleRows) f.raw(visibleRows);
     const [{ total }] = await this.db.query<{ total: string }>(`SELECT count(*) AS total FROM assessments a ${f.where()}`, [...f.values]);
     const classParam = '$1';
     const rows = await this.db.query<{ id: string; title: string; type: ClassAssessmentRow['type']; status: ClassAssessmentRow['status']; due_date: string; question_count: string; submitted: string; pending: string; avg: string | null }>(

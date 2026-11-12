@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { AppUser, Submission, SubmissionPage } from '../../shared/types';
 import { likePattern, optionalFilter, pageFields, SqlFilter, toNumber } from '../common/paging';
+import { visibleAssessmentSql } from '../assessments/visibility';
 import { gradeSubmission } from '../../shared/grading';
 import { AssessmentsService } from '../assessments/assessments.service';
 import { ClassesService } from '../classes/classes.service';
@@ -28,12 +29,16 @@ export class SubmissionsService {
     @Inject(NotificationsService) private readonly notifications: NotificationsService,
     @Inject(ClassesService) private readonly classes: ClassesService,
   ) {}
-  /** Submissions of students in the classes the user teaches (all of them for an admin). */
+  /** Submissions to the assessments the user may see, from students of their classes (everything for an admin). */
   async findAllFor(user: AppUser) {
     const scope = await this.classes.scopeFor(user);
     const repo = this.db.repository<Submission>('submissions');
     if (scope === null) return repo.all();
-    return repo.whereSql('student_id IN (SELECT id FROM students WHERE class_id = ANY($1))', [scope]);
+    const f = new SqlFilter();
+    const classes = f.param(scope);
+    const visible = visibleAssessmentSql(user, scope, f);
+    return repo.whereSql(`student_id IN (SELECT id FROM students WHERE class_id = ANY(${classes}))
+      AND assessment_id IN (SELECT a.id FROM assessments a WHERE ${visible})`, f.values);
   }
   /** The grading list: filtered, counted per status and paged in SQL. */
   async page(user: AppUser, query: unknown): Promise<SubmissionPage> {
@@ -41,6 +46,8 @@ export class SubmissionsService {
     const scope = await this.classes.scopeFor(user);
     const f = new SqlFilter();
     if (scope) f.add(p => `st.class_id = ANY(${p})`, scope);
+    const visible = visibleAssessmentSql(user, scope, f);
+    if (visible) f.raw(`s.assessment_id IN (SELECT a.id FROM assessments a WHERE ${visible})`);
     if (classId) f.add(p => `st.class_id = ${p}`, classId);
     if (assessmentId) f.add(p => `s.assessment_id = ${p}`, assessmentId);
     if (q) f.add(p => `s.data->>'studentName' ILIKE ${p} OR st.code ILIKE ${p}`, likePattern(q));
@@ -71,7 +78,10 @@ export class SubmissionsService {
     const item = await this.db.repository<Submission>('submissions').find(id);
     if (item) {
       const scope = await this.classes.scopeFor(user);
-      if (scope === null || scope.includes((await this.students.findOne(item.studentId)).classId)) return item;
+      if (scope === null) return item;
+      const assessment = await this.assessments.findOne(item.assessmentId).catch(() => null);
+      if (assessment && await this.assessments.canSee(user, assessment)
+        && scope.includes((await this.students.findOne(item.studentId)).classId)) return item;
     }
     throw new NotFoundException(`Submission ${id} not found`);
   }
@@ -95,12 +105,15 @@ export class SubmissionsService {
       await repo.insert(item);
       // A retry replaces a reviewed attempt, so the student's average must drop that score.
       if (previous?.status === 'published') await this.students.refreshStatistics(student.id);
-      await this.notifications.notifyClassTeachers(student.classId, {
-        type: 'submission_received',
+      // Only the teacher who set the test hears about it; older tests without an owner go to the class's teachers.
+      const notice = {
+        type: 'submission_received' as const,
         title: `${student.name} đã nộp bài${previous ? ' (làm lại)' : ''}`,
         body: `${assessment.title} · chờ chấm và duyệt`,
         link: `/grading?assessment=${encodeURIComponent(assessment.id)}`,
-      });
+      };
+      if (assessment.ownerId) await this.notifications.notifyUsers([assessment.ownerId], notice);
+      else await this.notifications.notifyClassTeachers(student.classId, notice);
     });
     return item;
   }

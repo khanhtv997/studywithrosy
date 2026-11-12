@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { AppUser, Student, StudentPage, Submission } from '../../shared/types';
 import { likePattern, optionalFilter, pageFields, SqlFilter, toNumber } from '../common/paging';
+import { visibleAssessmentSql } from '../assessments/visibility';
 import { ClassesService } from '../classes/classes.service';
 import { validate } from '../common/validate';
 import { DatabaseService } from '../database/database.service';
@@ -44,10 +45,13 @@ export class StudentsService {
     if (STATUS_SQL[status]) f.raw(STATUS_SQL[status]);
 
     const [{ total }] = await this.db.query<{ total: string }>(`SELECT count(*) AS total FROM students st ${f.where()}`, [...f.values]);
+    // Done / assigned only count the assessments this user may see (their own tests for a teacher).
+    const visible = visibleAssessmentSql(user, scope, f);
+    const visibleAnd = visible ? `${visible} AND` : '';
     const rows = await this.db.query<{ data: Student; class_name: string | null; submitted: string; assigned: string }>(
       `SELECT st.data, c.data->>'name' AS class_name,
-              (SELECT count(*) FROM submissions s WHERE s.student_id = st.id) AS submitted,
-              (SELECT count(*) FROM assessments a WHERE a.data->'classIds' ? st.class_id AND a.data->>'status' <> 'draft') AS assigned
+              (SELECT count(*) FROM submissions s JOIN assessments a ON a.id = s.assessment_id WHERE ${visibleAnd} s.student_id = st.id) AS submitted,
+              (SELECT count(*) FROM assessments a WHERE ${visibleAnd} a.data->'classIds' ? st.class_id AND a.data->>'status' <> 'draft') AS assigned
        FROM students st LEFT JOIN classes c ON c.id = st.class_id
        ${f.where()} ORDER BY st.sort_order ${f.limit(page, pageSize)}`, f.values);
     return {

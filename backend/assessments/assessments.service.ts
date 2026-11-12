@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, ForbiddenException, Inject, Inj
 import { randomBytes, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { likePattern, optionalFilter, pageFields, SqlFilter, toNumber } from '../common/paging';
+import { canSeeAssessment, visibleAssessmentSql } from './visibility';
 import type {
   AppUser, Assessment, AssessmentPage, AssessmentShareInfo, SharedAssessmentSummary, SharedAssessmentView, StaffMember,
 } from '../../shared/types';
@@ -57,10 +58,12 @@ export class AssessmentsService {
 
   findAll() { return this.repo().all(); }
 
+  /** What the user may see (see visibility.ts): an admin everything, a teacher their own assessments. */
   async findAllFor(user: AppUser) {
     const scope = await this.classes.scopeFor(user);
-    if (scope === null) return this.findAll();
-    return this.repo().whereSql(`owner_id = $1 OR data->'classIds' ?| $2::text[]`, [user.id, scope]);
+    const f = new SqlFilter();
+    const visible = visibleAssessmentSql(user, scope, f, 'assessments');
+    return visible ? this.repo().whereSql(visible, f.values) : this.findAll();
   }
 
   /** The assessment list: visible ones, filtered, counted per type and paged in SQL, newest first. */
@@ -68,10 +71,8 @@ export class AssessmentsService {
     const { page, pageSize, q, type, classId, status } = validate(assessmentPageSchema, query);
     const scope = await this.classes.scopeFor(user);
     const f = new SqlFilter();
-    if (scope) {
-      const me = f.param(user.id);
-      f.add(p => `a.owner_id = ${me} OR a.data->'classIds' ?| ${p}::text[]`, scope);
-    }
+    const visible = visibleAssessmentSql(user, scope, f);
+    if (visible) f.raw(visible);
     if (classId) f.add(p => `a.data->'classIds' ? ${p}`, classId);
     if (status !== 'all') f.add(p => `a.data->>'status' = ${p}`, status);
     if (q) f.add(p => `a.data->>'title' ILIKE ${p}`, likePattern(q));
@@ -108,10 +109,9 @@ export class AssessmentsService {
     return item;
   }
 
-  private async canSee(user: AppUser, item: Assessment) {
-    if (user.role === 'admin' || item.ownerId === user.id) return true;
-    const scope = await this.classes.scopeFor(user);
-    return item.classIds.some(id => scope?.includes(id));
+  async canSee(user: AppUser, item: Assessment) {
+    if (user.role === 'admin') return true;
+    return canSeeAssessment(user, await this.classes.scopeFor(user), item);
   }
 
   /** "Not found" also for assessments the user may not see, so ids reveal nothing. */

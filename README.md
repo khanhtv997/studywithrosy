@@ -103,6 +103,7 @@ Trên màn hình ≥ 1024px, nút **Thu gọn** ở cuối sidebar chuyển sang
 ## Phân quyền giáo viên, giao nhiều lớp và chia sẻ đề
 
 - **Lớp có giáo viên phụ trách** (`teacherIds`). Giáo viên chỉ thấy lớp mình phụ trách cùng học sinh, bài nộp của các lớp đó, và các đề mình tạo hoặc đề giao cho lớp mình. Admin thấy tất cả và đổi giáo viên phụ trách trong trang chi tiết lớp. Giáo viên tự tạo lớp thì tự động phụ trách lớp đó.
+- **Dữ liệu riêng của từng giáo viên:** giáo viên chỉ thấy đề do mình tạo cùng bài nộp, chấm bài, phân tích, thông báo nộp bài và gợi ý AI của các đề đó, kể cả khi cùng phụ trách một lớp với giáo viên khác (lớp và học sinh thì dùng chung). Admin thấy tất cả. Đề tạo trước khi có phân quyền (chưa có người tạo) vẫn hiện cho giáo viên phụ trách lớp. Quy tắc nằm ở `backend/assessments/visibility.ts`.
 - **Một đề giao cho nhiều lớp** (`classIds`). Có thể thêm lớp bất cứ lúc nào; lớp đã có học sinh nộp bài thì không bỏ ra được. Bài nháp có thể chưa có lớp.
 - **Chia sẻ đề** (nút chia sẻ trong danh sách đề): chia sẻ trực tiếp cho giáo viên (họ nhận thông báo, đề hiện ở tab "Được chia sẻ với tôi") hoặc tạo liên kết `/shared/<token>` (tắt được bất cứ lúc nào). Người nhận mở đề, xem trước như học sinh, rồi bấm "Giao cho lớp của tôi" để tạo **bản sao riêng**; bản gốc và bài làm của lớp người chia sẻ không bị ảnh hưởng.
 - Migration 6 chuyển `assessments.class_id` sang `data.classIds`, thêm `owner_id`, `share_token`, bảng `assessment_shares`, và gán mọi lớp hiện có cho tất cả giáo viên hiện có (admin chỉnh lại sau).
