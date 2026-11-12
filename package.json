@@ -14,7 +14,7 @@
     "preview": "vite preview --host 0.0.0.0 --port 3000",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "lint": "tsc --noEmit",
-    "test": "tsx --test backend/*.test.ts src/utils/*.test.ts"
+    "test": "tsx --test backend/*.test.ts src/utils/*.test.ts src/components/ui/*.test.tsx"
   },
   "dependencies": {
     "@fontsource/be-vietnam-pro": "^5.3.0",

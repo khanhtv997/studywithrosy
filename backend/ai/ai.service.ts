@@ -3,6 +3,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { EXERCISE_FORMATS } from '../../shared/exercise-formats';
 import { validate } from '../common/validate';
 import { analysisSchema, feedbackSchema, ocrSchema } from './ai.dto';
+import { plainText } from './plain-text';
 import { docxToText, normalizeQuestions, parseTextToExam } from './exam-parser';
 import { AiKeysService, classifyKeyError } from './ai-keys.service';
 
@@ -154,8 +155,8 @@ export class AiService {
     const topic = data.weakQuestions[0]?.grammarTopic || 'các câu còn sai';
     const fallback = `Em đã hoàn thành bài ${data.assessmentTitle || 'kiểm tra'} với ${data.score}/10. Hãy xem lại ${topic}, làm thêm vài câu cùng dạng và hỏi giáo viên nếu còn vướng mắc.`;
     try {
-      const response = await this.generate(`Viết nhận xét tiếng Việt ngắn gọn, khích lệ và nêu hướng ôn tập cụ thể cho học sinh ${data.studentName || ''}. Bài: ${data.assessmentTitle || ''}. Điểm: ${data.score}/10. Câu sai: ${JSON.stringify(data.weakQuestions)}.`);
-      return { success: true, feedback: response?.text.trim() || fallback };
+      const response = await this.generate(`Viết nhận xét tiếng Việt ngắn gọn (3-5 câu), khích lệ và nêu hướng ôn tập cụ thể cho học sinh ${data.studentName || ''}. Bài: ${data.assessmentTitle || ''}. Điểm: ${data.score}/10. Câu sai: ${JSON.stringify(data.weakQuestions)}. Viết như lời thầy cô nói với học sinh, chỉ dùng văn bản thường: không dùng Markdown, không dấu *, #, không gạch đầu dòng, không tiêu đề.`);
+      return { success: true, feedback: plainText(response?.text ?? '') || fallback };
     } catch (error) { this.logger.warn(`Feedback AI failed: ${String(error)}`); return { success: true, feedback: fallback }; }
   }
 
@@ -164,7 +165,7 @@ export class AiService {
     const topic = data.weakTopics[0]?.topic || 'ngữ pháp cơ bản';
     const fallback = `Điểm trung bình là ${data.avgScore}/10 trên ${data.totalStudents} bài nộp. Nên ôn lại ${topic} và luyện thêm các câu học sinh thường làm sai.`;
     try {
-      const response = await this.generate(`Phân tích ngắn gọn kết quả lớp bằng tiếng Việt và đề xuất hoạt động ôn tập. Bài: ${data.assessmentTitle || ''}. Điểm trung bình: ${data.avgScore}/10. Số bài: ${data.totalStudents}. Chủ đề yếu: ${JSON.stringify(data.weakTopics)}. Câu sai nhiều: ${JSON.stringify(data.topWrongQuestions)}.`);
+      const response = await this.generate(`Phân tích ngắn gọn kết quả lớp bằng tiếng Việt và đề xuất hoạt động ôn tập. Trình bày bằng Markdown đơn giản: vài tiêu đề "##", gạch đầu dòng "-", chữ đậm "**" cho ý chính; không dùng bảng, không lời chào, tối đa khoảng 250 từ. Bài: ${data.assessmentTitle || ''}. Điểm trung bình: ${data.avgScore}/10. Số bài: ${data.totalStudents}. Chủ đề yếu: ${JSON.stringify(data.weakTopics)}. Câu sai nhiều: ${JSON.stringify(data.topWrongQuestions)}.`);
       return { success: true, analysis: response?.text.trim() || fallback };
     } catch (error) { this.logger.warn(`Analysis AI failed: ${String(error)}`); return { success: true, analysis: fallback }; }
   }

@@ -6,6 +6,7 @@ import { useApp } from '../../context/AppContext';
 import type { AssessmentAnalytics, ClassAnalytics, ClassAssessmentRow, ClassResult } from '../../types';
 import { PageHeader, StatCard } from '../ui/PageHeader';
 import { Pagination, useServerPage } from '../ui/Pagination';
+import { Markdown } from '../ui/Markdown';
 import { RichText } from '../ui/RichText';
 import { SelectField } from '../ui/SelectField';
 import { Tabs } from '../ui/Tabs';
@@ -157,7 +158,7 @@ function AssessmentView({ assessmentId, classId, onPickClass }: { assessmentId: 
       </div>
       {aiError && <p role="alert" className="mt-3 text-xs text-rose-700">{aiError}</p>}
       {aiAnalysis
-        ? <div className="mt-3 max-h-80 overflow-y-auto whitespace-pre-line rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 text-sm leading-relaxed text-slate-700">{aiAnalysis}</div>
+        ? <div className="analytics-scroll mt-3 rounded-xl border border-indigo-100 bg-indigo-50/40 p-4 sm:p-5" tabIndex={0} aria-label={t('Gợi ý nội dung ôn tập')}><Markdown text={aiAnalysis} /></div>
         : <p className="mt-2 text-sm text-slate-600">{totals.submitted === 0 ? t('Chưa có bài nộp để phân tích.') : t('Tổng hợp các lỗi sai thường gặp và gợi ý nội dung ôn tập ngắn cho buổi học tiếp theo.')}</p>}
     </section>
 
