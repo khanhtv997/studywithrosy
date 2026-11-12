@@ -127,6 +127,9 @@ const migrations = [
   // Teachers who sign up give a phone number and the school they teach at, for the admin to check.
   `ALTER TABLE users ADD COLUMN phone text;
   ALTER TABLE users ADD COLUMN school text;`,
+  // Why and when an admin locked an account (shown to the admin and to the user at sign-in).
+  `ALTER TABLE users ADD COLUMN locked_reason text;
+  ALTER TABLE users ADD COLUMN locked_at timestamptz;`,
 ];
 
 @Injectable()

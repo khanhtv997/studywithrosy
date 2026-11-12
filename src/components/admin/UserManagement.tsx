@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Check, GraduationCap, Hourglass, KeyRound, Phone, Plus, School, Search, ShieldCheck, UserRoundCog, UsersRound, X } from 'lucide-react';
+import { Check, GraduationCap, Hourglass, KeyRound, Lock, LockOpen, Phone, Plus, School, Search, ShieldCheck, UserRoundCog, UsersRound, X } from 'lucide-react';
 import type { AppUser, Role, UserPage } from '../../types';
 import { eduApi } from '../../api/client';
 import { useApp } from '../../context/AppContext';
@@ -9,6 +9,7 @@ import { Modal } from '../ui/Modal';
 import { PageHeader, StatCard } from '../ui/PageHeader';
 import { Pagination, useDebounced, useServerPage } from '../ui/Pagination';
 import { SelectField } from '../ui/SelectField';
+import { RowMenu } from '../ui/RowMenu';
 import { useI18n } from '../../i18n';
 import './approval.css';
 
@@ -21,17 +22,22 @@ const EMPTY_FORM = { name: '', email: '', password: '', role: 'teacher' as Role,
 
 export const UserManagement: React.FC = () => {
   const { students, currentUser } = useApp();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const roleOpts = roleOptions.map(option => ({ ...option, label: t(option.label) }));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | Role>('all');
-  // "?status=pending" (from the new-account notification) opens the list of accounts waiting for approval.
+  // "?status=pending" (from the new-account notification) opens the accounts waiting for approval; "?status=locked" the locked ones.
   const [searchParams, setSearchParams] = useSearchParams();
-  const pendingOnly = searchParams.get('status') === 'pending';
-  const setPendingOnly = (on: boolean) => setSearchParams(prev => { const next = new URLSearchParams(prev); if (on) next.set('status', 'pending'); else next.delete('status'); return next; }, { replace: true });
+  const statusParam = searchParams.get('status');
+  const statusFilter: 'all' | 'pending' | 'locked' = statusParam === 'pending' || statusParam === 'locked' ? statusParam : 'all';
+  const pendingOnly = statusFilter === 'pending';
+  const setStatusFilter = (value: 'all' | 'pending' | 'locked') => setSearchParams(prev => { const next = new URLSearchParams(prev); if (value === 'all') next.delete('status'); else next.set('status', value); return next; }, { replace: true });
+  const setPendingOnly = (on: boolean) => setStatusFilter(on ? 'pending' : 'all');
+  const [lockUser, setLockUser] = useState<AppUser | null>(null);
+  const [lockReason, setLockReason] = useState('');
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState('');
@@ -42,9 +48,20 @@ export const UserManagement: React.FC = () => {
   const q = useDebounced(query.trim());
   // Search, role filter and paging happen on the server; counts are system-wide totals per role.
   const pager = useServerPage<AppUser, UserPage>(
-    (page, pageSize, signal) => eduApi.userPage({ page, pageSize, role: roleFilter, q, status: pendingOnly ? 'pending' : 'all' }, signal),
-    [roleFilter, q, pendingOnly]);
-  const counts = pager.data?.counts ?? { all: 0, admin: 0, teacher: 0, student: 0, pending: 0 };
+    (page, pageSize, signal) => eduApi.userPage({ page, pageSize, role: roleFilter, q, status: statusFilter }, signal),
+    [roleFilter, q, statusFilter]);
+  const counts = pager.data?.counts ?? { all: 0, admin: 0, teacher: 0, student: 0, pending: 0, locked: 0 };
+  const openLock = (user: AppUser) => { setLockReason(''); setLockUser(user); };
+  const submitLock = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!lockUser) return;
+    if (await act(() => eduApi.setLock(lockUser.id, true, lockReason.trim() || undefined), t('Đã khoá {email}. Người này đã bị đăng xuất.', { email: lockUser.email }))) setLockUser(null);
+  };
+  const unlock = (user: AppUser) => {
+    if (!window.confirm(t('Mở khoá tài khoản {email}?', { email: user.email }))) return;
+    void act(() => eduApi.setLock(user.id, false), t('Đã mở khoá {email}.', { email: user.email }));
+  };
+  const lockedOn = (iso: string | null) => iso ? new Date(iso).toLocaleDateString(locale) : '';
   const approve = (user: AppUser) => act(() => eduApi.setApproval(user.id, 'approved', user.role),
     t('Đã duyệt {email}. Tài khoản đã dùng được.', { email: user.email }));
   const reject = (user: AppUser) => {
@@ -111,6 +128,9 @@ export const UserManagement: React.FC = () => {
           <button type="button" className={`approval-filter ${pendingOnly ? 'is-on' : ''}`} aria-pressed={pendingOnly} onClick={() => setPendingOnly(!pendingOnly)}>
             <Hourglass size={14} aria-hidden="true" />{t('Chờ phê duyệt')}<span>{counts.pending}</span>
           </button>
+          <button type="button" className={`approval-filter is-lock ${statusFilter === 'locked' ? 'is-on' : ''}`} aria-pressed={statusFilter === 'locked'} onClick={() => setStatusFilter(statusFilter === 'locked' ? 'all' : 'locked')}>
+            <Lock size={14} aria-hidden="true" />{t('Đã khoá')}<span>{counts.locked}</span>
+          </button>
           <SelectField ariaLabel={t('Lọc theo vai trò')} value={roleFilter} onValueChange={v => setRoleFilter(v as typeof roleFilter)} compact className="w-full sm:w-44"
             options={[{ value: 'all', label: t('Tất cả vai trò') }, ...roleOpts]} />
           <label className="search-field">
@@ -122,7 +142,7 @@ export const UserManagement: React.FC = () => {
       <div className="table-scroll">
         {pager.error ? <p role="alert" className="empty-state">{pager.error}</p> : pager.loading && !pager.data ? <p className="empty-state">{t('Đang tải danh sách tài khoản...')}</p> :
           <table className="data-table min-w-[820px]">
-            <thead><tr><th>{t('Người dùng')}</th><th>{t('Vai trò')}</th><th>{t('Học sinh liên kết')}</th><th>{t('Trạng thái')}</th><th className="text-right">{t('Mật khẩu')}</th></tr></thead>
+            <thead><tr><th>{t('Người dùng')}</th><th>{t('Vai trò')}</th><th>{t('Học sinh liên kết')}</th><th>{t('Trạng thái')}</th><th className="text-right">{t('Thao tác')}</th></tr></thead>
             <tbody>{pager.total === 0
               ? <tr><td colSpan={5} className="empty-cell"><UsersRound size={28} aria-hidden="true" /><span>{t('Không có tài khoản nào khớp với bộ lọc.')}</span></td></tr>
               : pager.pageItems.map(user => <tr key={user.id}>
@@ -139,11 +159,21 @@ export const UserManagement: React.FC = () => {
                     <Button size="sm" disabled={busy} onClick={() => void approve(user)}><Check size={14} aria-hidden="true" />{user.approval === 'pending' ? t('Duyệt') : t('Duyệt lại')}</Button>
                     {user.approval === 'pending' && <Button size="sm" variant="ghost" disabled={busy} onClick={() => reject(user)}><X size={14} aria-hidden="true" />{t('Từ chối')}</Button>}
                   </div>
-                </div> : <><button type="button" disabled={busy || user.id === currentUser?.id} title={user.id === currentUser?.id ? t('Không thể khóa tài khoản đang đăng nhập') : user.active ? t('Bấm để khóa') : t('Bấm để mở khóa')}
-                  onClick={() => void act(() => eduApi.updateUser(user.id, { active: !user.active }), user.active ? t('Đã khóa {email}.', { email: user.email }) : t('Đã mở khóa {email}.', { email: user.email }))}
-                  className={`badge ${user.active ? 'badge-success' : 'badge-muted'} disabled:cursor-default`}>{user.active ? t('Đang hoạt động') : t('Đã khóa')}</button>
+                </div> : <>{user.active
+                  ? <span className="badge badge-success">{t('Đang hoạt động')}</span>
+                  : <div className="lock-cell">
+                    <span className="badge badge-danger"><Lock size={12} aria-hidden="true" />{t('Đã khoá')}</span>
+                    {user.lockedAt && <small>{t('Từ {date}', { date: lockedOn(user.lockedAt) })}</small>}
+                    {user.lockedReason && <small className="lock-reason" title={user.lockedReason}>{t('Lý do: {reason}', { reason: user.lockedReason })}</small>}
+                  </div>}
                   {user.mustChangePassword && <div className="mt-1"><span className="badge badge-warning" title={t('Đăng nhập lần tới phải đổi mật khẩu')}>{t('Chờ đổi mật khẩu')}</span></div>}</>}</td>
-                <td className="text-right"><Button variant="ghost" size="sm" disabled={busy} onClick={() => { setNewPassword(''); setPasswordUser(user); }}><KeyRound size={14} aria-hidden="true" />{t('Đặt lại')}</Button></td>
+                <td className="text-right"><RowMenu label={t('Thao tác: {name}', { name: user.name })} items={[
+                  { label: t('Đặt lại mật khẩu'), icon: <KeyRound size={16} aria-hidden="true" />, disabled: busy, onSelect: () => { setNewPassword(''); setPasswordUser(user); } },
+                  user.active
+                    ? { label: t('Khoá tài khoản'), icon: <Lock size={16} aria-hidden="true" />, danger: true, separated: true, disabled: busy || user.id === currentUser?.id,
+                      hint: user.id === currentUser?.id ? t('Không thể khóa tài khoản đang đăng nhập') : undefined, onSelect: () => openLock(user) }
+                    : { label: t('Mở khoá tài khoản'), icon: <LockOpen size={16} aria-hidden="true" />, separated: true, disabled: busy, onSelect: () => unlock(user) },
+                ]} /></td>
               </tr>)}</tbody>
           </table>}
       </div>
@@ -168,6 +198,19 @@ export const UserManagement: React.FC = () => {
             <SelectField ariaLabel={t('Học sinh liên kết')} value={form.studentId} onValueChange={value => setForm({ ...form, studentId: value })} options={studentOptions} placeholder={t('Chọn học sinh')} className="w-full" />
           </div>}
         </div>
+      </form>
+    </Modal>}
+
+    {lockUser && <Modal title={t('Khoá tài khoản')} subtitle={`${lockUser.name} · ${lockUser.email}`} onClose={() => setLockUser(null)} dismissible={!busy}
+      footer={<>
+        <Button variant="ghost" disabled={busy} onClick={() => setLockUser(null)}>{t('Hủy')}</Button>
+        <Button type="submit" form="lock-form" variant="danger" disabled={busy}><Lock size={15} aria-hidden="true" />{busy ? t('Đang khoá...') : t('Khoá tài khoản')}</Button>
+      </>}>
+      <form id="lock-form" onSubmit={submitLock} className="form-stack">
+        <p className="lock-warning">{t('Người này sẽ bị đăng xuất ngay và không đăng nhập được (cả bằng mật khẩu lẫn Google) cho đến khi được mở khoá. Dữ liệu của họ vẫn được giữ nguyên.')}</p>
+        <label className="form-field">{t('Lý do (không bắt buộc, người dùng sẽ thấy khi đăng nhập)')}
+          <textarea rows={3} maxLength={500} autoFocus value={lockReason} placeholder={t('VD: Đã nghỉ dạy tại trường, tài khoản dùng sai mục đích...')} onChange={e => setLockReason(e.target.value)} />
+        </label>
       </form>
     </Modal>}
 

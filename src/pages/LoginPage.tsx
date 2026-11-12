@@ -5,7 +5,7 @@ import { Link } from 'react-router';
 import { useApp } from '../context/AppContext';
 import { GoogleSignIn } from '../components/auth/GoogleSignIn';
 import { RegisterForm } from '../components/auth/SignupForms';
-import { eduApi } from '../api/client';
+import { eduApi, SIGN_OUT_NOTICE_KEY } from '../api/client';
 import type { RegisterInput } from '../types';
 import { BrandLogo } from '../components/ui/BrandLogo';
 import { useI18n } from '../i18n';
@@ -20,7 +20,10 @@ export const LoginPage: React.FC<{ mode?: 'login' | 'register' }> = ({ mode = 'l
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+  // Signed out because the account was locked: say so once (set by the API client).
+  const [error, setError] = useState(() => {
+    try { const notice = sessionStorage.getItem(SIGN_OUT_NOTICE_KEY) ?? ''; sessionStorage.removeItem(SIGN_OUT_NOTICE_KEY); return notice; } catch { return ''; }
+  });
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

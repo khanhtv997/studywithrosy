@@ -42,6 +42,8 @@ const vi: Record<string, string> = {
   'This email is already linked to another Google account': 'Email này đã liên kết với một tài khoản Google khác',
   'You cannot change the approval of your own account': 'Bạn không thể tự duyệt tài khoản của chính mình',
   'This email is already registered. Sign in instead.': 'Email này đã được đăng ký. Hãy đăng nhập.',
+  'Your account has been locked': 'Tài khoản của bạn đã bị khoá. Hãy liên hệ quản trị viên',
+  'You cannot lock your own account': 'Bạn không thể tự khoá tài khoản của mình',
 };
 
 export default vi;

@@ -14,3 +14,12 @@
 .user-contact a, .user-contact span { display: inline-flex; align-items: center; gap: 5px; max-width: 280px; overflow: hidden; color: inherit; text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
 .user-contact a:hover { color: #4b44a3; text-decoration: underline; }
 .user-contact svg { flex: none; color: #9aa0b6; }
+
+/* Locked accounts. */
+.approval-filter.is-lock span { color: #9f2340; background: #ffe4e8; }
+.approval-filter.is-lock.is-on { border-color: #f1a7b5; color: #9f2340; background: #fff1f3; }
+.lock-cell { display: grid; justify-items: start; gap: 3px; }
+.lock-cell .badge { display: inline-flex; align-items: center; gap: 4px; }
+.lock-cell small { max-width: 220px; overflow: hidden; color: #7a8099; font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.lock-cell .lock-reason { color: #9f2340; }
+.lock-warning { margin: 0; padding: 10px 12px; border-radius: 10px; color: #7a2a3a; background: #fff1f3; font-size: 13px; line-height: 1.55; }

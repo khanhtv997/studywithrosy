@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { AppUser, Role, StaffMember, UserPage } from '../../shared/types';
 import { likePattern, pageFields, SqlFilter, toNumber } from '../common/paging';
 import { validate } from '../common/validate';
-import { approvalSchema, createUserSchema, ownPasswordSchema, passwordSchema, updateUserSchema } from './users.dto';
+import { approvalSchema, createUserSchema, lockSchema, ownPasswordSchema, passwordSchema, updateUserSchema } from './users.dto';
 import { profileSchema } from '../auth/auth.dto';
 
 export type { Role };
@@ -17,7 +17,7 @@ export interface UserRecord extends AppUser { passwordHash: string; googleSub: s
 const userPageSchema = z.object({
   ...pageFields,
   role: z.enum(['all', 'admin', 'teacher', 'student']).default('all'),
-  status: z.enum(['all', 'pending']).default('all'),
+  status: z.enum(['all', 'pending', 'locked']).default('all'),
 });
 
 /** What Google tells us about the person signing in (from a verified ID token). */
@@ -30,30 +30,32 @@ export class UsersService {
     @Inject(NotificationsService) private readonly notifications: NotificationsService,
   ) {}
   private readonly columns = `id, email, name, role, student_id AS "studentId", active, must_change_password AS "mustChangePassword",
-    approval, google_sub AS "googleSub", google_sub IS NOT NULL AS "googleLinked", avatar_url AS "avatarUrl", phone, school,
+    approval, google_sub AS "googleSub", google_sub IS NOT NULL AS "googleLinked", avatar_url AS "avatarUrl", phone, school, locked_reason AS "lockedReason", locked_at AS "lockedAt",
     password_hash AS "passwordHash", created_at AS "createdAt"`;
   publicUser(user: UserRecord): PublicUser { const { passwordHash: _hash, googleSub: _sub, ...safe } = user; return safe; }
   async all() { return (await this.db.query<UserRecord>(`SELECT ${this.columns} FROM users ORDER BY created_at, id`)).map(user => this.publicUser(user)); }
   /** The account table: filtered by role, approval and search and paged in SQL; `counts` are system-wide totals. */
   async page(query: unknown): Promise<UserPage> {
     const { page, pageSize, q, role, status } = validate(userPageSchema, query);
-    const [counts] = await this.db.query<Record<'all' | Role | 'pending', string>>(
+    const [counts] = await this.db.query<Record<'all' | Role | 'pending' | 'locked', string>>(
       `SELECT count(*) AS "all", count(*) FILTER (WHERE role = 'admin' AND approval = 'approved') AS admin,
               count(*) FILTER (WHERE role = 'teacher' AND approval = 'approved') AS teacher,
               count(*) FILTER (WHERE role = 'student' AND approval = 'approved') AS student,
-              count(*) FILTER (WHERE approval = 'pending') AS pending
+              count(*) FILTER (WHERE approval = 'pending') AS pending,
+              count(*) FILTER (WHERE NOT active) AS locked
        FROM users`);
     const f = new SqlFilter();
     if (q) f.add(p => `name ILIKE ${p} OR email ILIKE ${p} OR phone ILIKE ${p} OR school ILIKE ${p}`, likePattern(q));
     if (role !== 'all') f.add(p => `role = ${p}`, role);
     if (status === 'pending') f.raw(`approval = 'pending'`);
+    if (status === 'locked') f.raw('NOT active');
     const [{ total }] = await this.db.query<{ total: string }>(`SELECT count(*) AS total FROM users ${f.where()}`, [...f.values]);
     // Accounts waiting for approval come first, so the admin sees them without filtering.
     const rows = await this.db.query<UserRecord>(
       `SELECT ${this.columns} FROM users ${f.where()} ORDER BY (approval = 'pending') DESC, created_at, id ${f.limit(page, pageSize)}`, f.values);
     const countsOut = {
       all: toNumber(counts.all), admin: toNumber(counts.admin), teacher: toNumber(counts.teacher),
-      student: toNumber(counts.student), pending: toNumber(counts.pending),
+      student: toNumber(counts.student), pending: toNumber(counts.pending), locked: toNumber(counts.locked),
     };
     return { items: rows.map(user => this.publicUser(user)), total: toNumber(total), page, pageSize, counts: countsOut };
   }
@@ -88,8 +90,28 @@ export class UsersService {
       if (Number(count[0].count) <= 1) throw new ConflictException('Cannot disable or demote the last active admin');
     }
     const studentId = await this.checkStudent(nextRole, data.studentId === undefined ? old.studentId : data.studentId);
-    await this.db.query('UPDATE users SET email=$1, name=$2, role=$3, student_id=$4, active=$5, updated_at=now() WHERE id=$6',
+    await this.db.query('UPDATE users SET email=$1, name=$2, role=$3, student_id=$4, active=$5, locked_at=CASE WHEN $5 THEN NULL ELSE COALESCE(locked_at, now()) END, locked_reason=CASE WHEN $5 THEN NULL ELSE locked_reason END, updated_at=now() WHERE id=$6',
       [(data.email ?? old.email).toLowerCase(), data.name ?? old.name, nextRole, studentId, active, id]);
+    return this.publicUser(await this.require(id));
+  }
+
+  /**
+   * An admin locks or unlocks an account. A locked user is signed out at once (every request
+   * checks the account) and is told at sign-in that the account is locked, with the reason.
+   */
+  async setLock(id: string, body: unknown, admin: AppUser) {
+    const { locked, reason } = validate(lockSchema, body);
+    const old = await this.require(id);
+    if (old.id === admin.id && locked) throw new BadRequestException('You cannot lock your own account');
+    if (locked && old.role === 'admin' && old.active) {
+      const count = await this.db.query<{ count: string }>("SELECT count(*)::text AS count FROM users WHERE role='admin' AND active=true AND approval='approved'");
+      if (Number(count[0].count) <= 1) throw new ConflictException('Cannot disable or demote the last active admin');
+    }
+    await this.db.query(
+      locked
+        ? 'UPDATE users SET active=false, locked_reason=$2, locked_at=now(), updated_at=now() WHERE id=$1'
+        : 'UPDATE users SET active=true, locked_reason=NULL, locked_at=NULL, updated_at=now() WHERE id=$1',
+      locked ? [id, reason || null] : [id]);
     return this.publicUser(await this.require(id));
   }
 

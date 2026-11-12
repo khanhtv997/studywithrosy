@@ -37,6 +37,9 @@ export interface AppUser {
   /** Given when a teacher signs up (form or Google). */
   phone: string | null;
   school: string | null;
+  /** Set while the account is locked (active = false) by an admin. */
+  lockedReason: string | null;
+  lockedAt: string | null;
   createdAt: string;
 }
 
@@ -378,7 +381,7 @@ export type StudentPage = Page<StudentRow>;
 
 export interface UserPage extends Page<AppUser> {
   /** `pending`: accounts waiting for approval (they are left out of the role counts until approved). */
-  counts: { all: number; admin: number; teacher: number; student: number; pending: number };
+  counts: { all: number; admin: number; teacher: number; student: number; pending: number; locked: number };
 }
 
 /* ---- Analytics ---- */

@@ -17,6 +17,15 @@ export interface BootstrapData {
 export const TOKEN_KEY = 'eduassess_token';
 /** Fired when the API rejects the saved sign-in (expired or revoked), so the app can show the login page. */
 export const SESSION_EXPIRED_EVENT = 'eduassess:session-expired';
+/** Why the session ended (e.g. the account was locked), shown once on the login page. */
+export const SIGN_OUT_NOTICE_KEY = 'eduassess_signout_notice';
+
+/** An API error in the user's language (see src/i18n/vi-server.ts), with the reason when the server gives one. */
+function errorText(payload: { message?: unknown; error?: unknown; reason?: unknown } | null, status: number) {
+  const raw = payload?.message || payload?.error || `HTTP ${status}`;
+  const text = Array.isArray(raw) ? raw.map(m => translate(String(m))).join(', ') : translate(String(raw));
+  return typeof payload?.reason === 'string' && payload.reason ? `${text}. ${translate('Lý do: {reason}', { reason: payload.reason })}` : text;
+}
 
 /**
  * The sign-in token lives in localStorage so every tab and a reopened browser stay signed in until it
@@ -60,15 +69,16 @@ export async function apiRequest<T>(path: string, method = 'GET', body?: unknown
   });
   const payload = await response.json().catch(() => null);
   // A saved sign-in that the server no longer accepts: forget it and go back to the login page.
+  const message = response.ok ? '' : errorText(payload, response.status);
   if (response.status === 401 && token && path !== 'auth/login' && path !== 'auth/google') {
     authToken.clear();
+    // Locked while signed in: the login page says why.
+    if (payload?.reason !== undefined || payload?.message === 'Your account has been locked') {
+      try { sessionStorage.setItem(SIGN_OUT_NOTICE_KEY, message); } catch { /* not shown */ }
+    }
     window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
   }
-  if (!response.ok) {
-    const message = payload?.message || payload?.error || `HTTP ${response.status}`;
-    // Server messages are shown in the user's language (see src/i18n/vi-server.ts and en/core.ts).
-    throw new Error(Array.isArray(message) ? message.map(m => translate(String(m))).join(', ') : translate(String(message)));
-  }
+  if (!response.ok) throw new Error(message);
   return payload as T;
 }
 
@@ -98,6 +108,7 @@ export const eduApi = {
   users: () => apiRequest<AppUser[]>('admin/users'),
   createUser: (data: { email: string; name: string; role: Role; password: string; studentId?: string | null }) => apiRequest<AppUser>('admin/users', 'POST', data),
   updateUser: (id: string, data: Partial<Pick<AppUser, 'email' | 'name' | 'role' | 'studentId' | 'active'>>) => apiRequest<AppUser>(`admin/users/${id}`, 'PATCH', data),
+  setLock: (id: string, locked: boolean, reason?: string) => apiRequest<AppUser>(`admin/users/${id}/lock`, 'PATCH', { locked, ...(reason ? { reason } : {}) }),
   setApproval: (id: string, approval: Exclude<Approval, 'pending'>, role?: Role) => apiRequest<AppUser>(`admin/users/${id}/approval`, 'PATCH', { approval, ...(role ? { role } : {}) }),
   resetPassword: (id: string, password: string) => apiRequest<{ success: boolean }>(`admin/users/${id}/password`, 'PATCH', { password }),
 

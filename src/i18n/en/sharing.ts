@@ -139,6 +139,21 @@ const en: Record<string, string> = {
   'Xoá tất cả {count} highlight?': 'Remove all {count} highlights?',
   'Xoá tất cả highlight': 'Remove all highlights',
   'Thao tác khác: {title}': 'More actions: {title}',
+  // Locking accounts
+  'Lý do: {reason}': 'Reason: {reason}',
+  'Đã khoá {email}. Người này đã bị đăng xuất.': 'Locked {email}. They have been signed out.',
+  'Mở khoá tài khoản {email}?': 'Unlock {email}?',
+  'Đã mở khoá {email}.': 'Unlocked {email}.',
+  'Đã khoá': 'Locked',
+  'Từ {date}': 'Since {date}',
+  'Thao tác: {name}': 'Actions: {name}',
+  'Khoá tài khoản': 'Lock account',
+  'Mở khoá tài khoản': 'Unlock account',
+  'Đang khoá...': 'Locking...',
+  'Người này sẽ bị đăng xuất ngay và không đăng nhập được (cả bằng mật khẩu lẫn Google) cho đến khi được mở khoá. Dữ liệu của họ vẫn được giữ nguyên.':
+    'They are signed out at once and cannot sign in (with a password or Google) until unlocked. Their data is kept.',
+  'Lý do (không bắt buộc, người dùng sẽ thấy khi đăng nhập)': 'Reason (optional, shown to the user at sign-in)',
+  'VD: Đã nghỉ dạy tại trường, tài khoản dùng sai mục đích...': 'e.g. No longer teaching at the school, misuse of the account...',
   // Google sign-in and account approval
   'hoặc': 'or',
   // Teacher sign-up

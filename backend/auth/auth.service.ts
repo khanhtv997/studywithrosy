@@ -9,6 +9,10 @@ import { googleLoginSchema, loginSchema, registerSchema } from './auth.dto';
 
 const googleClientId = () => process.env.GOOGLE_CLIENT_ID?.trim() || null;
 
+export const LOCKED_MESSAGE = 'Your account has been locked';
+/** A locked account: the reason (if the admin gave one) goes with the message. */
+const lockedError = (user: UserRecord) => new ForbiddenException({ message: LOCKED_MESSAGE, reason: user.lockedReason ?? undefined, statusCode: 403 });
+
 @Injectable()
 export class AuthService {
   private google: OAuth2Client | null = null;
@@ -23,7 +27,9 @@ export class AuthService {
   async login(body: unknown) {
     const data = validate(loginSchema, body);
     const user = await this.users.byEmail(data.email);
-    if (!user || !user.active || !(await compare(data.password, user.passwordHash))) throw new UnauthorizedException('Email or password is incorrect');
+    if (!user || !(await compare(data.password, user.passwordHash))) throw new UnauthorizedException('Email or password is incorrect');
+    // Only someone who knows the password learns that the account is locked.
+    if (!user.active) throw lockedError(user);
     if (user.approval === 'pending') throw new ForbiddenException('Your account is waiting for an administrator to approve it');
     if (user.approval === 'rejected') throw new ForbiddenException('Your account was not approved. Contact the administrator.');
     return this.session(user);
@@ -54,7 +60,7 @@ export class AuthService {
     const google = { sub: payload.sub, email: payload.email, name: payload.name?.trim() || payload.email, picture: payload.picture ?? null };
     const user = await this.users.findForGoogle(google)
       ?? await this.users.registerTeacher({ name: google.name, email: google.email, google });
-    if (!user.active) throw new UnauthorizedException('Account is disabled');
+    if (!user.active) throw lockedError(user);
     if (user.approval !== 'approved') return { status: user.approval, name: user.name, email: user.email };
     return { status: 'ok', ...(await this.session(user)) };
   }
@@ -64,7 +70,9 @@ export class AuthService {
     try { id = (await this.jwt.verifyAsync<{ sub: string }>(token)).sub; }
     catch { throw new UnauthorizedException('Invalid or expired token'); }
     const user = await this.users.byId(id);
-    if (!user?.active) throw new UnauthorizedException('Account is disabled');
+    if (!user) throw new UnauthorizedException('Account is disabled');
+    // 401 signs the user out at once; the message and reason are shown on the login page.
+    if (!user.active) throw new UnauthorizedException({ message: LOCKED_MESSAGE, reason: user.lockedReason ?? undefined, statusCode: 401 });
     if (user.approval !== 'approved') throw new UnauthorizedException('Your account is waiting for an administrator to approve it');
     return this.users.publicUser(user);
   }
