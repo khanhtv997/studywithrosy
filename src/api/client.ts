@@ -3,7 +3,7 @@ import type {
   AppUser, Assessment, ClassRoom, CreateAssessmentInput, CreateClassInput, CreateStudentInput,
   AiApiKey, AiKeyTestResult, NotificationList, OcrExamResult, Role, StudentImportInput, StudentImportPreview, StudentImportResult, Student, Submission, UpdateAssessmentInput,
   AssessmentShareInfo, CopyAssessmentInput, SharedAssessmentSummary, SharedAssessmentView, StaffMember, UpdateClassInput,
-  AssessmentAnalytics, AssessmentPage, ClassAnalytics, StudentPage, SubmissionPage, UserPage, AiSuggestion, AiSuggestionResult,
+  AssessmentAnalytics, AssessmentPage, ClassAnalytics, StudentPage, SubmissionPage, UserPage, AiSuggestion, AiSuggestionResult, ReviewAnnotations,
 } from '../types';
 
 export interface BootstrapData {
@@ -125,6 +125,10 @@ export const eduApi = {
   createAssessment: (data: CreateAssessmentInput) => apiRequest<Assessment>('assessments', 'POST', data),
   updateAssessment: (id: string, data: UpdateAssessmentInput) => apiRequest<Assessment>(`assessments/${id}`, 'PATCH', data),
   deleteAssessment: (id: string) => apiRequest<{ id: string }>(`assessments/${id}`, 'DELETE'),
+  // Review screen: the user's own highlights and notes
+  reviewAnnotations: (id: string) => apiRequest<ReviewAnnotations>(`assessments/${encodeURIComponent(id)}/annotations`),
+  saveReviewAnnotations: (id: string, data: ReviewAnnotations) =>
+    apiRequest<ReviewAnnotations>(`assessments/${encodeURIComponent(id)}/annotations`, 'PUT', { highlights: data.highlights, notes: data.notes }),
   // Sharing between teachers
   assessmentShares: (id: string) => apiRequest<AssessmentShareInfo>(`assessments/${encodeURIComponent(id)}/shares`),
   shareAssessment: (id: string, userIds: string[]) => apiRequest<AssessmentShareInfo>(`assessments/${encodeURIComponent(id)}/shares`, 'POST', { userIds }),

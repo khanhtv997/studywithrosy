@@ -52,6 +52,18 @@ export const createAssessmentSchema = z.object({
 // { classIds } would reset status to "draft" and wipe the description.
 export const updateAssessmentSchema = z.object(assessmentFields).partial();
 
+export const annotationsSchema = z.object({
+  highlights: z.array(z.object({
+    id: z.string().min(1).max(64),
+    block: z.string().min(1).max(200),
+    start: z.number().int().min(0).max(1_000_000),
+    end: z.number().int().min(1).max(1_000_000),
+    color: z.enum(['yellow', 'green', 'pink', 'blue']),
+    note: z.string().max(4000).optional(),
+  }).refine(h => h.end > h.start, 'Highlight must not be empty')).max(3000),
+  notes: z.record(z.string().max(200), z.string().max(8000)).refine(n => Object.keys(n).length <= 1000, 'Too many notes'),
+});
+
 export const shareSchema = z.object({ userIds: z.array(z.string().min(1)).min(1).max(50) });
 
 export const copySchema = z.object({

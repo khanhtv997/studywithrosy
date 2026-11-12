@@ -20,6 +20,7 @@ import { UsersPage } from './pages/UsersPage';
 import { AiKeysPage } from './pages/AiKeysPage';
 import { StudentPage } from './pages/StudentPage';
 import { SharedAssessmentPage } from './pages/SharedAssessmentPage';
+import { AssessmentReviewPage } from './pages/AssessmentReviewPage';
 import type { AppUser } from './types';
 
 function AppLoading() {
@@ -90,6 +91,7 @@ function AppRoutes() {
         </Route>
         <Route element={<RequireRole roles={['admin', 'teacher']} />}>
           <Route path="/assessments/:assessmentId/preview" element={<AssessmentPreviewPage />} />
+          <Route path="/assessments/:assessmentId/review" element={<AssessmentReviewPage />} />
         </Route>
       </Route>
     </Route>

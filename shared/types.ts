@@ -280,6 +280,32 @@ export interface AiApiKey {
 /** message is a fixed sentence (translated in the UI); model and detail carry the variable parts. */
 export interface AiKeyTestResult { ok: boolean; message: string; model?: string; detail?: string; }
 
+/* ---- Review screen (teacher goes through a test with the class) ---- */
+
+export type HighlightColor = 'yellow' | 'green' | 'pink' | 'blue';
+
+/**
+ * A highlighted span inside one block of text (a question, an option or a passage).
+ * `block` names the block (see src/components/teacher/review/blocks.ts); start/end are character
+ * offsets in the block's plain text (without the <u> tags).
+ */
+export interface ReviewHighlight {
+  id: string;
+  block: string;
+  start: number;
+  end: number;
+  color: HighlightColor;
+  note?: string;
+}
+
+/** Everything one teacher marked on one assessment. */
+export interface ReviewAnnotations {
+  highlights: ReviewHighlight[];
+  /** Free notes per question or passage, keyed like blocks ("q:<id>", "p:<id>"). */
+  notes: Record<string, string>;
+  updatedAt?: string | null;
+}
+
 /* ---- Server-side paging ---- */
 
 /** One page of a list; `total` counts every row matching the filters. */

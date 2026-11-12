@@ -4,14 +4,14 @@ import { z } from 'zod';
 import { likePattern, optionalFilter, pageFields, SqlFilter, toNumber } from '../common/paging';
 import { canSeeAssessment, visibleAssessmentSql } from './visibility';
 import type {
-  AppUser, Assessment, AssessmentPage, AssessmentShareInfo, SharedAssessmentSummary, SharedAssessmentView, StaffMember,
+  AppUser, Assessment, AssessmentPage, AssessmentShareInfo, ReviewAnnotations, SharedAssessmentSummary, SharedAssessmentView, StaffMember,
 } from '../../shared/types';
 import { ClassesService } from '../classes/classes.service';
 import { validate } from '../common/validate';
 import { DatabaseService } from '../database/database.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StudentsService } from '../students/students.service';
-import { copySchema, createAssessmentSchema, shareSchema, updateAssessmentSchema } from './assessments.dto';
+import { annotationsSchema, copySchema, createAssessmentSchema, shareSchema, updateAssessmentSchema } from './assessments.dto';
 
 const assessmentPageSchema = z.object({
   ...pageFields,
@@ -189,6 +189,28 @@ export class AssessmentsService {
       for (const studentId of new Set(affected)) await this.students.refreshStatistics(studentId);
     });
     return { id };
+  }
+
+  // ---------- Review screen: the user's own highlights and notes ----------
+
+  async annotations(user: AppUser, id: string): Promise<ReviewAnnotations> {
+    await this.findOneFor(user, id);
+    const [row] = await this.db.query<{ data: ReviewAnnotations; updated_at: string }>(
+      'SELECT data, updated_at FROM review_annotations WHERE assessment_id = $1 AND user_id = $2', [id, user.id]);
+    return row ? { ...row.data, updatedAt: row.updated_at } : { highlights: [], notes: {}, updatedAt: null };
+  }
+
+  async saveAnnotations(user: AppUser, id: string, body: unknown): Promise<ReviewAnnotations> {
+    await this.findOneFor(user, id);
+    const data = validate(annotationsSchema, body);
+    // Empty notes are dropped rather than stored.
+    const notes = Object.fromEntries(Object.entries(data.notes).filter(([, text]) => text.trim() !== ''));
+    const value = { highlights: data.highlights, notes };
+    const [row] = await this.db.query<{ updated_at: string }>(
+      `INSERT INTO review_annotations (assessment_id, user_id, data) VALUES ($1, $2, $3::jsonb)
+       ON CONFLICT (assessment_id, user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now() RETURNING updated_at`,
+      [id, user.id, JSON.stringify(value)]);
+    return { ...value, updatedAt: row.updated_at };
   }
 
   // ---------- Sharing ----------

@@ -110,6 +110,14 @@ const migrations = [
     created_at timestamptz NOT NULL DEFAULT now()
   );
   CREATE INDEX idx_ai_suggestions_assessment ON ai_suggestions(assessment_id, created_at DESC);`,
+  // A teacher's highlights and notes on an assessment (the review screen); private to that teacher.
+  `CREATE TABLE review_annotations (
+    assessment_id text NOT NULL REFERENCES assessments(id) ON DELETE CASCADE,
+    user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    data jsonb NOT NULL,
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (assessment_id, user_id)
+  );`,
 ];
 
 @Injectable()

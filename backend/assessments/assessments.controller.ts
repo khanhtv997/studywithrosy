@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Inject, Param, Patch, Post, Put, Query } from '@nestjs/common';
 import { AssessmentsService } from './assessments.service';
 import { CurrentUser, Roles } from '../auth/auth.decorators';
 import type { PublicUser } from '../users/users.service';
@@ -20,6 +20,9 @@ export class AssessmentsController {
   @Patch(':id') update(@Param('id') id: string, @Body() body: unknown, @CurrentUser() user: PublicUser) { return this.assessments.update(id, body, user); }
   @Delete(':id') remove(@Param('id') id: string, @CurrentUser() user: PublicUser) { return this.assessments.remove(id, user); }
 
+  /** The current user's highlights and notes from the review screen (private to them). */
+  @Get(':id/annotations') annotations(@Param('id') id: string, @CurrentUser() user: PublicUser) { return this.assessments.annotations(user, id); }
+  @Put(':id/annotations') saveAnnotations(@Param('id') id: string, @Body() body: unknown, @CurrentUser() user: PublicUser) { return this.assessments.saveAnnotations(user, id, body); }
   @Get(':id/shares') shares(@Param('id') id: string, @CurrentUser() user: PublicUser) { return this.assessments.shares(id, user); }
   @Post(':id/shares') share(@Param('id') id: string, @Body() body: unknown, @CurrentUser() user: PublicUser) { return this.assessments.share(id, body, user); }
   @Delete(':id/shares/:userId') unshare(@Param('id') id: string, @Param('userId') userId: string, @CurrentUser() user: PublicUser) { return this.assessments.unshare(id, userId, user); }

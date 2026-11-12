@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { BarChart3, ClipboardCheck, Copy, Eye, FileSpreadsheet, FileText, Inbox, Lock, Pencil, Plus, School, Search, Send, Share2, Sparkles, Trash2 } from 'lucide-react';
+import { BarChart3, ClipboardCheck, Copy, Eye, Highlighter, FileSpreadsheet, FileText, Inbox, Lock, Pencil, Plus, School, Search, Send, Share2, Sparkles, Trash2 } from 'lucide-react';
 import { AssignClassesModal } from './AssignClassesModal';
 import { ShareAssessmentModal } from './ShareAssessmentModal';
 import { eduApi } from '../../api/client';
@@ -160,6 +160,7 @@ export const AssessmentList: React.FC<AssessmentListProps> = ({ onOpenOcr, onSel
                   <td>
                     <div className="flex items-center justify-end gap-0.5">
                       <button type="button" className="icon-btn" onClick={() => onPreview(item.id)} aria-label={t('Xem trước: {title}', { title: item.title })} title={t('Xem trước như học sinh')}><Eye size={16} aria-hidden="true" /></button>
+                      <button type="button" className="icon-btn" onClick={() => navigate(`/assessments/${encodeURIComponent(item.id)}/review`)} aria-label={t('Chữa đề: {title}', { title: item.title })} title={t('Chữa đề (highlight, ghi chú, hiện đáp án)')}><Highlighter size={16} aria-hidden="true" /></button>
                       <button type="button" className="icon-btn" onClick={() => onSelectAssessmentForGrading(item.id)} aria-label={t('Chấm bài: {title}', { title: item.title })} title={t('Chấm & duyệt bài')}><ClipboardCheck size={16} aria-hidden="true" /></button>
                       <button type="button" className="icon-btn" onClick={() => onSelectAssessmentForAnalytics(item.id)} aria-label={t('Phân tích: {title}', { title: item.title })} title={t('Xem phân tích')}><BarChart3 size={16} aria-hidden="true" /></button>
                       <button type="button" className="icon-btn" disabled={busyId === item.id} onClick={() => changeStatus(item)}
