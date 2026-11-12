@@ -4,9 +4,9 @@ import { ArrowLeft, ArrowRight, BookOpenCheck, ChartNoAxesCombined, ClipboardChe
 import { Link } from 'react-router';
 import { useApp } from '../context/AppContext';
 import { GoogleSignIn } from '../components/auth/GoogleSignIn';
-import { GoogleProfileForm, RegisterForm } from '../components/auth/SignupForms';
+import { RegisterForm } from '../components/auth/SignupForms';
 import { eduApi } from '../api/client';
-import type { GoogleProfileInput, RegisterInput } from '../types';
+import type { RegisterInput } from '../types';
 import { BrandLogo } from '../components/ui/BrandLogo';
 import { useI18n } from '../i18n';
 import './login.css';
@@ -16,8 +16,6 @@ export const LoginPage: React.FC<{ mode?: 'login' | 'register' }> = ({ mode = 'l
   const { login, loginWithGoogle } = useApp();
   const { t } = useI18n();
   const [waiting, setWaiting] = useState<{ status: 'pending' | 'rejected'; name: string; email: string } | null>(null);
-  /** A new Google user: the credential is sent again together with phone and school. */
-  const [googleSignup, setGoogleSignup] = useState<{ credential: string; name: string; email: string } | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -46,18 +44,11 @@ export const LoginPage: React.FC<{ mode?: 'login' | 'register' }> = ({ mode = 'l
 
   const google = (credential: string) => run(async () => {
     const result = await loginWithGoogle(credential);
-    if (result.status === 'needs_profile') setGoogleSignup({ credential, name: result.name, email: result.email });
-    else if (result.status !== 'ok') setWaiting(result);
-  });
-  const finishGoogleSignup = (profile: GoogleProfileInput) => run(async () => {
-    if (!googleSignup) return;
-    const result = await loginWithGoogle(googleSignup.credential, profile);
-    setGoogleSignup(null);
-    if (result.status !== 'ok' && result.status !== 'needs_profile') setWaiting(result);
+    if (result.status !== 'ok') setWaiting(result);
   });
   const register = (data: RegisterInput) => run(async () => { setWaiting(await eduApi.register(data)); });
-  const back = () => { setWaiting(null); setGoogleSignup(null); setError(''); };
-  const signingUp = mode === 'register' || !!googleSignup;
+  const back = () => { setWaiting(null); setError(''); };
+  const signingUp = mode === 'register';
 
   return <main className="login-page">
     <LanguageSwitcher className="login-lang" />
@@ -109,11 +100,9 @@ export const LoginPage: React.FC<{ mode?: 'login' | 'register' }> = ({ mode = 'l
             {mode === 'register'
               ? <Link to="/login" className="login-back" onClick={back}><ArrowLeft size={16} aria-hidden="true" />{t('Quay lại đăng nhập')}</Link>
               : <button type="button" className="login-back" onClick={back}><ArrowLeft size={16} aria-hidden="true" />{t('Quay lại đăng nhập')}</button>}
-          </div> : googleSignup ? <GoogleProfileForm name={googleSignup.name} email={googleSignup.email} busy={busy} error={error}
-            onSubmit={finishGoogleSignup} onCancel={back} />
-          : mode === 'register' ? <>
+          </div> : mode === 'register' ? <>
             <RegisterForm onSubmit={register} busy={busy} error={error} />
-            <GoogleSignIn onCredential={google} onError={setError} disabled={busy} hint={t('Hoặc đăng ký nhanh bằng tài khoản Google, sau đó điền số điện thoại và trường.')} />
+            <GoogleSignIn onCredential={google} onError={setError} disabled={busy} hint={t('Hoặc đăng ký nhanh bằng tài khoản Google; số điện thoại và trường bổ sung sau.')} />
             <p className="login-switch">{t('Đã có tài khoản?')} <Link to="/login">{t('Đăng nhập')}</Link></p>
           </> : <>
           <form onSubmit={submit} className="login-form">

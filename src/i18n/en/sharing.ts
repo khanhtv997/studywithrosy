@@ -165,7 +165,12 @@ const en: Record<string, string> = {
   'Điền thông tin của bạn. Quản trị viên sẽ duyệt tài khoản trước khi bạn sử dụng.': 'Fill in your details. An administrator approves the account before you can use it.',
   'Tài khoản giáo viên của bạn đã được tạo. Quản trị viên sẽ xem và phê duyệt; sau đó bạn đăng nhập là dùng được ngay.':
     'Your teacher account has been created. An administrator will review and approve it; then just sign in.',
-  'Hoặc đăng ký nhanh bằng tài khoản Google, sau đó điền số điện thoại và trường.': 'Or sign up quickly with Google, then add your phone number and school.',
+  'Hoặc đăng ký nhanh bằng tài khoản Google; số điện thoại và trường bổ sung sau.': 'Or sign up quickly with Google; add your phone number and school later.',
+  'Thông tin cá nhân': 'Personal details',
+  'Lưu thông tin': 'Save details',
+  'Hãy bổ sung số điện thoại và trường đang dạy để quản trị viên tiện liên hệ.': 'Please add your phone number and school so the administrator can reach you.',
+  'Cập nhật ngay': 'Update now',
+  'Để sau': 'Later',
   'Đã có tài khoản?': 'Already have an account?',
   'Giáo viên chưa có tài khoản?': 'Teacher without an account?',
   'Giáo viên mới: đăng nhập bằng Google để tạo tài khoản. Quản trị viên sẽ duyệt trước khi bạn sử dụng.':

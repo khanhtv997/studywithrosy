@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Phone, School, UserRound } from 'lucide-react';
-import type { GoogleProfileInput, RegisterInput } from '../../types';
+import { ArrowRight, Eye, EyeOff, LockKeyhole, Mail, Phone, School, UserRound } from 'lucide-react';
+import type { ProfileInput, RegisterInput } from '../../types';
 import { useI18n } from '../../i18n';
 
 /** Same rules as the server: 0xxxxxxxxx or +84xxxxxxxxx; spaces, dots and dashes are ignored. */
@@ -8,7 +8,7 @@ export const normalizePhone = (value: string) => value.trim().replace(/[\s.\-()]
 export const isPhone = (value: string) => /^(\+84|0)\d{9,10}$/.test(normalizePhone(value));
 const isEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
 
-type FieldErrors = Partial<Record<'name' | 'email' | 'phone' | 'school' | 'password' | 'confirm', string>>;
+export type FieldErrors = Partial<Record<'name' | 'email' | 'phone' | 'school' | 'password' | 'confirm', string>>;
 
 function Field({ label, icon: Icon, error, children }: { label: string; icon: typeof Mail; error?: string; children: React.ReactElement<React.InputHTMLAttributes<HTMLInputElement>> }) {
   const id = React.useId();
@@ -21,8 +21,8 @@ function Field({ label, icon: Icon, error, children }: { label: string; icon: ty
 }
 
 /** Name, phone and school: asked from every teacher who signs up. */
-function ProfileFields({ value, onChange, errors, disabled, nameReadOnly = false }: {
-  value: GoogleProfileInput; onChange: (next: GoogleProfileInput) => void; errors: FieldErrors; disabled: boolean; nameReadOnly?: boolean;
+export function ProfileFields({ value, onChange, errors, disabled, nameReadOnly = false }: {
+  value: ProfileInput; onChange: (next: ProfileInput) => void; errors: FieldErrors; disabled: boolean; nameReadOnly?: boolean;
 }) {
   const { t } = useI18n();
   return <>
@@ -41,7 +41,7 @@ function ProfileFields({ value, onChange, errors, disabled, nameReadOnly = false
   </>;
 }
 
-function checkProfile(value: GoogleProfileInput, t: (key: string) => string): FieldErrors {
+export function checkProfile(value: ProfileInput, t: (key: string) => string): FieldErrors {
   const errors: FieldErrors = {};
   if (value.name.trim().length < 2) errors.name = t('Hãy nhập họ và tên.');
   if (!isPhone(value.phone)) errors.phone = t('Số điện thoại chưa đúng (VD: 0912345678 hoặc +84912345678).');
@@ -49,12 +49,12 @@ function checkProfile(value: GoogleProfileInput, t: (key: string) => string): Fi
   return errors;
 }
 
-const trimmed = (value: GoogleProfileInput): GoogleProfileInput => ({ name: value.name.trim(), phone: normalizePhone(value.phone), school: value.school.trim() });
+export const trimmed = (value: ProfileInput): ProfileInput => ({ name: value.name.trim(), phone: normalizePhone(value.phone), school: value.school.trim() });
 
 /** Sign-up with email and password. The account is a teacher account that waits for an admin. */
 export function RegisterForm({ onSubmit, busy, error }: { onSubmit: (data: RegisterInput) => void; busy: boolean; error: string }) {
   const { t } = useI18n();
-  const [profile, setProfile] = useState<GoogleProfileInput>({ name: '', phone: '', school: '' });
+  const [profile, setProfile] = useState<ProfileInput>({ name: '', phone: '', school: '' });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -94,30 +94,5 @@ export function RegisterForm({ onSubmit, busy, error }: { onSubmit: (data: Regis
     <button className="login-submit" type="submit" disabled={busy}>
       <span>{busy ? t('Đang gửi...') : t('Đăng ký')}</span>{busy ? <span className="login-spinner" aria-hidden="true" /> : <ArrowRight size={19} aria-hidden="true" />}
     </button>
-  </form>;
-}
-
-/** After "Continue with Google" for someone new: their phone and school before the account is created. */
-export function GoogleProfileForm({ name, email, onSubmit, onCancel, busy, error }: {
-  name: string; email: string; onSubmit: (profile: GoogleProfileInput) => void; onCancel: () => void; busy: boolean; error: string;
-}) {
-  const { t } = useI18n();
-  const [profile, setProfile] = useState<GoogleProfileInput>({ name, phone: '', school: '' });
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const submit = (event: React.FormEvent) => {
-    event.preventDefault();
-    if (busy) return;
-    const next = checkProfile(profile, t);
-    setErrors(next);
-    if (!Object.keys(next).length) onSubmit(trimmed(profile));
-  };
-  return <form onSubmit={submit} className="login-form login-form-compact" noValidate>
-    <div className="login-google-account"><Mail size={16} aria-hidden="true" /><span>{t('Đăng ký bằng Google:')} <strong>{email}</strong></span></div>
-    {error && <div role="alert" className="login-error">{error}</div>}
-    <ProfileFields value={profile} onChange={setProfile} errors={errors} disabled={busy} />
-    <button className="login-submit" type="submit" disabled={busy}>
-      <span>{busy ? t('Đang gửi...') : t('Gửi đăng ký')}</span>{busy ? <span className="login-spinner" aria-hidden="true" /> : <ArrowRight size={19} aria-hidden="true" />}
-    </button>
-    <button type="button" className="login-back login-back-center" onClick={onCancel} disabled={busy}><ArrowLeft size={16} aria-hidden="true" />{t('Quay lại')}</button>
   </form>;
 }

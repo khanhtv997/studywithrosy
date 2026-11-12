@@ -8,6 +8,7 @@ import type { AppUser, Role, StaffMember, UserPage } from '../../shared/types';
 import { likePattern, pageFields, SqlFilter, toNumber } from '../common/paging';
 import { validate } from '../common/validate';
 import { approvalSchema, createUserSchema, ownPasswordSchema, passwordSchema, updateUserSchema } from './users.dto';
+import { profileSchema } from '../auth/auth.dto';
 
 export type { Role };
 export type PublicUser = AppUser;
@@ -132,7 +133,7 @@ export class UsersService {
    * A teacher signing up (form or Google): the account waits for an admin's approval, and the
    * admins are told. Without a Google account the given password is used; with one, sign-in is by Google.
    */
-  async registerTeacher(input: { name: string; email: string; phone: string; school: string; password?: string; google?: GoogleProfile }): Promise<UserRecord> {
+  async registerTeacher(input: { name: string; email: string; phone?: string | null; school?: string | null; password?: string; google?: GoogleProfile }): Promise<UserRecord> {
     const email = input.email.trim().toLowerCase();
     if (await this.byEmail(email)) throw new ConflictException('This email is already registered. Sign in instead.');
     const id = `user-${randomUUID()}`;
@@ -141,7 +142,7 @@ export class UsersService {
     const inserted = await this.db.query(
       `INSERT INTO users (id, email, name, role, password_hash, google_sub, avatar_url, phone, school, approval)
        VALUES ($1, $2, $3, 'teacher', $4, $5, $6, $7, $8, 'pending') ON CONFLICT DO NOTHING RETURNING id`,
-      [id, email, input.name, passwordHash, input.google?.sub ?? null, input.google?.picture ?? null, input.phone, input.school]);
+      [id, email, input.name, passwordHash, input.google?.sub ?? null, input.google?.picture ?? null, input.phone ?? null, input.school ?? null]);
     // Two sign-ups at the same moment: the other one won.
     if (!inserted.length) throw new ConflictException('This email is already registered. Sign in instead.');
     const created = await this.require(id);
@@ -149,10 +150,18 @@ export class UsersService {
     await this.notifications.notifyUsers(admins.map(a => a.id), {
       type: 'account_pending',
       title: `Giáo viên mới chờ duyệt: ${created.name}`,
-      body: `${created.school ?? ''} · ${created.phone ?? ''} · ${created.email}${input.google ? ' (Google)' : ''}. Bấm để duyệt hoặc từ chối.`,
+      body: `${[created.school, created.phone, created.email].filter(Boolean).join(' · ')}${input.google ? ' (Google)' : ''}. Bấm để duyệt hoặc từ chối.`,
       link: '/admin/users?status=pending',
     });
     return created;
+  }
+
+  /** A signed-in user changes their own name, phone and school. */
+  async updateOwnProfile(id: string, body: unknown) {
+    const data = validate(profileSchema, body);
+    await this.require(id);
+    await this.db.query('UPDATE users SET name=$1, phone=$2, school=$3, updated_at=now() WHERE id=$4', [data.name, data.phone, data.school, id]);
+    return this.publicUser(await this.require(id));
   }
 
   async changePassword(id: string, body: unknown) {

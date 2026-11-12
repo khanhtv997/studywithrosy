@@ -1,14 +1,15 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type {
   AppUser, Assessment, ClassRoom, CreateAssessmentInput, CreateClassInput, CreateStudentInput,
-  GoogleLoginResult, GoogleProfileInput, Role, Student, Submission, UpdateAssessmentInput,
+  GoogleLoginResult, ProfileInput, Role, Student, Submission, UpdateAssessmentInput,
 } from '../types';
 import { authToken, eduApi, SESSION_EXPIRED_EVENT, TOKEN_KEY } from '../api/client';
 
 interface AppContextType {
   currentUser: AppUser | null; userRole: Role | null;
   login: (email: string, password: string) => Promise<void>; logout: () => void;
-  loginWithGoogle: (credential: string, profile?: GoogleProfileInput) => Promise<GoogleLoginResult>;
+  loginWithGoogle: (credential: string) => Promise<GoogleLoginResult>;
+  updateProfile: (data: ProfileInput) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   currentStudentId: string; selectedClassId: string; setSelectedClassId: (id: string) => void;
   classes: ClassRoom[]; students: Student[]; assessments: Assessment[]; submissions: Submission[];
@@ -91,9 +92,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   /** Signs in with a Google credential; an account still waiting for approval gets no session. */
-  const loginWithGoogle = async (credential: string, profile?: GoogleProfileInput): Promise<GoogleLoginResult> => {
+  const loginWithGoogle = async (credential: string): Promise<GoogleLoginResult> => {
     setError(null);
-    const result = await eduApi.googleLogin(credential, profile);
+    const result = await eduApi.googleLogin(credential);
     if (result.status !== 'ok') return result;
     await startSession(result);
     return result;
@@ -117,6 +118,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     setCurrentUser(user);
   };
+  const updateProfile = async (data: ProfileInput) => { setCurrentUser(await eduApi.updateProfile(data)); };
   const logout = () => { authToken.clear(); setCurrentUser(null); clearData(); setError(null); };
 
   /** Runs a mutation, then reloads data; errors go to the shared banner and are re-thrown for the caller. */
@@ -127,7 +129,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const currentStudentId = currentUser?.studentId || '';
   const value: AppContextType = {
-    currentUser, userRole: currentUser?.role || null, login, loginWithGoogle, logout, changePassword, currentStudentId, selectedClassId, setSelectedClassId,
+    currentUser, userRole: currentUser?.role || null, login, loginWithGoogle, updateProfile, logout, changePassword, currentStudentId, selectedClassId, setSelectedClassId,
     classes, students, assessments, submissions, loading, error, clearError: () => setError(null), reloadData, syncData, dataVersion,
     addClass: async data => { const item = await run(() => eduApi.createClass(data)); setSelectedClassId(item.id); },
     addStudent: async data => { await run(() => eduApi.createStudent(data)); },

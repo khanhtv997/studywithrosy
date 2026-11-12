@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation } from 'react-router';
-import { X } from 'lucide-react';
+import { UserRoundPen, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { ProfileModal } from '../components/auth/ProfileModal';
 import { useI18n } from '../i18n';
 import { Footer } from './Footer';
 import { Header } from './Header';
@@ -11,6 +12,26 @@ import './app-shell.css';
 import './product-design.css';
 
 const COLLAPSE_KEY = 'eduassess_sidebar_collapsed';
+const REMINDER_KEY = 'eduassess_profile_reminder_hidden';
+
+/** Teachers without a phone number or school (e.g. signed up with Google) are asked to add them; "Để sau" hides it for this session. */
+function ProfileReminder() {
+  const { currentUser } = useApp();
+  const { t } = useI18n();
+  const [hidden, setHidden] = useState(() => { try { return sessionStorage.getItem(REMINDER_KEY) === '1'; } catch { return false; } });
+  const [editing, setEditing] = useState(false);
+  if (!currentUser || currentUser.role !== 'teacher' || (currentUser.phone && currentUser.school)) return null;
+  const hide = () => { setHidden(true); try { sessionStorage.setItem(REMINDER_KEY, '1'); } catch { /* storage may be blocked */ } };
+  return <>
+    {!hidden && <div role="status" className="app-profile-reminder">
+      <UserRoundPen size={18} aria-hidden="true" />
+      <span>{t('Hãy bổ sung số điện thoại và trường đang dạy để quản trị viên tiện liên hệ.')}</span>
+      <button type="button" className="app-profile-reminder-primary" onClick={() => setEditing(true)}>{t('Cập nhật ngay')}</button>
+      <button type="button" className="app-profile-reminder-later" onClick={hide}>{t('Để sau')}</button>
+    </div>}
+    {editing && <ProfileModal onClose={() => setEditing(false)} />}
+  </>;
+}
 const readCollapsed = () => { try { return localStorage.getItem(COLLAPSE_KEY) === '1'; } catch { return false; } };
 
 export function AppShell() {
@@ -62,6 +83,7 @@ export function AppShell() {
       <Header page={page} onMenuClick={() => setMobileOpen(value => !value)} menuOpen={mobileOpen} />
       {error && <div role="alert" className="app-error-banner"><span>{error}</span><button type="button" onClick={clearError} aria-label={t('Đóng thông báo lỗi')}><X size={17}/></button></div>}
       {loading && <div role="status" className="app-loading-strip">{t('Đang cập nhật dữ liệu...')}</div>}
+      <ProfileReminder />
       <main id="main-content" tabIndex={-1} className="app-main">
         <div className="app-main-inner">
           <div className="app-route-content" key={location.pathname}><Outlet /></div>

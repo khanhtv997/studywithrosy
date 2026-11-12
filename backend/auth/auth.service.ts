@@ -5,7 +5,7 @@ import { OAuth2Client } from 'google-auth-library';
 import type { AuthConfig, GoogleLoginResult, RegisterResult } from '../../shared/types';
 import { validate } from '../common/validate';
 import { UsersService, type UserRecord } from '../users/users.service';
-import { googleLoginSchema, googleProfileSchema, loginSchema, registerSchema } from './auth.dto';
+import { googleLoginSchema, loginSchema, registerSchema } from './auth.dto';
 
 const googleClientId = () => process.env.GOOGLE_CLIENT_ID?.trim() || null;
 
@@ -37,14 +37,13 @@ export class AuthService {
   }
 
   /**
-   * Signs in with a Google ID token from the Google button. A new person is first asked for their
-   * name, phone and school ("needs_profile"); sending the same token again with them creates a
-   * teacher account that waits for approval.
+   * Signs in with a Google ID token from the Google button. A new person gets a teacher account
+   * at once that waits for approval; phone and school are added later from the account menu.
    */
   async loginWithGoogle(body: unknown): Promise<GoogleLoginResult> {
     const clientId = googleClientId();
     if (!clientId) throw new ServiceUnavailableException('Google sign-in is not set up on this server');
-    const { credential, profile: given } = validate(googleLoginSchema, body);
+    const { credential } = validate(googleLoginSchema, body);
     this.google ??= new OAuth2Client(clientId);
     let payload;
     try { payload = (await this.google.verifyIdToken({ idToken: credential, audience: clientId })).getPayload(); }
@@ -53,12 +52,8 @@ export class AuthService {
     if (!payload.email_verified) throw new BadRequestException('This Google account has no verified email address');
 
     const google = { sub: payload.sub, email: payload.email, name: payload.name?.trim() || payload.email, picture: payload.picture ?? null };
-    let user = await this.users.findForGoogle(google);
-    if (!user) {
-      if (given === undefined) return { status: 'needs_profile', name: google.name, email: google.email.toLowerCase() };
-      const profile = validate(googleProfileSchema, given);
-      user = await this.users.registerTeacher({ ...profile, email: google.email, google });
-    }
+    const user = await this.users.findForGoogle(google)
+      ?? await this.users.registerTeacher({ name: google.name, email: google.email, google });
     if (!user.active) throw new UnauthorizedException('Account is disabled');
     if (user.approval !== 'approved') return { status: user.approval, name: user.name, email: user.email };
     return { status: 'ok', ...(await this.session(user)) };

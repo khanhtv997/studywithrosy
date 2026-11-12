@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, KeyRound, LogOut, Menu } from 'lucide-react';
+import { ChevronDown, KeyRound, LogOut, Menu, UserRoundPen } from 'lucide-react';
 import { ChangePasswordModal } from '../components/auth/ChangePassword';
+import { ProfileModal } from '../components/auth/ProfileModal';
 import { NotificationBell } from './NotificationBell';
 import { initialsOf } from '../utils/initials';
 import { useApp } from '../context/AppContext';
@@ -18,6 +19,7 @@ function UserMenu() {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -50,6 +52,9 @@ function UserMenu() {
           <em>{roleLabel}</em>
         </span>
       </div>
+      <button type="button" role="menuitem" className="app-user-menu-item" onClick={() => { setOpen(false); setEditingProfile(true); }}>
+        <UserRoundPen size={17} aria-hidden="true" />{t('Thông tin cá nhân')}
+      </button>
       <button type="button" role="menuitem" className="app-user-menu-item" onClick={() => { setOpen(false); setChangingPassword(true); }}>
         <KeyRound size={17} aria-hidden="true" />{t('Đổi mật khẩu')}
       </button>
@@ -58,6 +63,7 @@ function UserMenu() {
       </button>
     </div>}
     {changingPassword && <ChangePasswordModal onClose={() => setChangingPassword(false)} />}
+    {editingProfile && <ProfileModal onClose={() => setEditingProfile(false)} />}
   </div>;
 }
 

@@ -12,6 +12,7 @@ export class AuthController {
   @Public() @Post('google') google(@Body() body: unknown) { return this.auth.loginWithGoogle(body); }
   @Public() @Post('register') register(@Body() body: unknown) { return this.auth.register(body); }
   @AllowPendingPasswordChange() @Get('me') me(@CurrentUser() user: PublicUser) { return user; }
+  @Patch('profile') profile(@CurrentUser() user: PublicUser, @Body() body: unknown) { return this.users.updateOwnProfile(user.id, body); }
   /** Any signed-in user changes their own password; required after an import or an admin reset. */
   @AllowPendingPasswordChange() @Patch('password') changePassword(@CurrentUser() user: PublicUser, @Body() body: unknown) {
     return this.users.changeOwnPassword(user.id, body);
