@@ -62,6 +62,14 @@ export const annotationsSchema = z.object({
     note: z.string().max(4000).optional(),
   }).refine(h => h.end > h.start, 'Highlight must not be empty')).max(3000),
   notes: z.record(z.string().max(200), z.string().max(8000)).refine(n => Object.keys(n).length <= 1000, 'Too many notes'),
+  drawings: z.array(z.object({
+    id: z.string().min(1).max(64),
+    anchor: z.string().min(1).max(200),
+    tool: z.enum(['pen', 'marker']),
+    color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+    width: z.number().min(1).max(40),
+    points: z.array(z.number().finite().min(-100_000).max(1_000_000)).min(2).max(6000),
+  })).max(2000).refine(list => list.reduce((sum, s) => sum + s.points.length, 0) <= 400_000, 'Too much drawing').default([]),
 });
 
 export const shareSchema = z.object({ userIds: z.array(z.string().min(1)).min(1).max(50) });

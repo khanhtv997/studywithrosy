@@ -91,13 +91,40 @@ mark.hl.has-note::after { content: ''; display: inline-block; width: .5em; heigh
 .review-popover textarea { width: 100%; padding: 8px 10px; border: 1px solid #dfe2ee; border-radius: 9px; font: inherit; font-size: 14px; font-weight: 400; resize: vertical; }
 .review-popover textarea:focus { outline: 2px solid #a99ce8; outline-offset: 1px; }
 
+/* Drawing tools: a second row of the top bar. */
+.review-drawbar { display: flex; flex-basis: 100%; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.review-modes { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid #e3e5ef; border-radius: 11px; background: #fff; }
+.review-mode { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 11px; border: 0; border-radius: 8px; color: #4b5270; background: transparent; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.review-mode:hover { background: #f0eefc; }
+.review-mode.is-on { color: #fff; background: #5a51b7; }
+.review-palette-colors, .review-sizes, .review-draw-actions { display: inline-flex; align-items: center; gap: 6px; }
+.review-pen-swatch { width: 26px; height: 26px; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px #d9dcea; cursor: pointer; transition: transform 120ms ease; }
+.review-pen-swatch:hover { transform: scale(1.1); }
+.review-pen-swatch.is-current { box-shadow: 0 0 0 2px #5a51b7; }
+.review-size { display: grid; place-items: center; width: 32px; height: 32px; border: 1px solid #e3e5ef; border-radius: 9px; background: #fff; cursor: pointer; }
+.review-size.is-on { border-color: #5a51b7; box-shadow: 0 0 0 1px #5a51b7; }
+.review-size span { display: block; border-radius: 50%; }
+.review-tool:disabled { opacity: .45; cursor: default; }
+.review-tool:disabled:hover { background: transparent; }
+
+/* Strokes sit over the text of the block they were drawn on; the marker blends like a highlighter pen. */
+.review-content, .review-passage, .review-question, .review-format { position: relative; }
+/* The layer itself multiplies with the page (a positioned svg isolates blending inside it), so text under a marker stays dark. */
+.review-draw { position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%; overflow: visible; pointer-events: none; mix-blend-mode: multiply; }
+.review-stroke { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.review-stroke-marker { opacity: .55; }
+.review-draw-capture { position: absolute; inset: 0; z-index: 6; cursor: crosshair; touch-action: none; user-select: none; }
+.review-draw-capture.is-eraser { cursor: cell; }
+.review-content.is-drawing { user-select: none; -webkit-user-select: none; }
+
 @media (max-width: 640px) {
+  .review-mode span { display: none; }
   .review-options, .review-answer, .review-question-actions { margin-left: 0; padding-left: 0; }
   .review-question .review-note, .review-question .review-add-note { width: 100%; margin-left: 0; }
   .review-bar-actions { width: 100%; justify-content: space-between; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .review-swatch, .review-options li, .review-chip { transition: none; }
+  .review-swatch, .review-pen-swatch, .review-options li, .review-chip { transition: none; }
 }
 @media print {
   .review-bar, .review-hint, .review-question-actions, .review-add-note { display: none; }

@@ -303,7 +303,25 @@ export interface ReviewAnnotations {
   highlights: ReviewHighlight[];
   /** Free notes per question or passage, keyed like blocks ("q:<id>", "p:<id>"). */
   notes: Record<string, string>;
+  /** Free-hand pen and marker strokes. */
+  drawings?: ReviewStroke[];
   updatedAt?: string | null;
+}
+
+export type DrawTool = 'pen' | 'marker';
+
+/**
+ * A free-hand stroke, pinned to the question, passage or other block it was started on
+ * ("anchor"), so it moves with that block when answers open above it or the text is zoomed.
+ * points: flat [x0, y0, x1, y1, ...] in px at 100% zoom, from the anchor's top-left corner.
+ */
+export interface ReviewStroke {
+  id: string;
+  anchor: string;
+  tool: DrawTool;
+  color: string;
+  width: number;
+  points: number[];
 }
 
 /* ---- Server-side paging ---- */

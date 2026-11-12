@@ -197,7 +197,7 @@ export class AssessmentsService {
     await this.findOneFor(user, id);
     const [row] = await this.db.query<{ data: ReviewAnnotations; updated_at: string }>(
       'SELECT data, updated_at FROM review_annotations WHERE assessment_id = $1 AND user_id = $2', [id, user.id]);
-    return row ? { ...row.data, updatedAt: row.updated_at } : { highlights: [], notes: {}, updatedAt: null };
+    return row ? { drawings: [], ...row.data, updatedAt: row.updated_at } : { highlights: [], notes: {}, drawings: [], updatedAt: null };
   }
 
   async saveAnnotations(user: AppUser, id: string, body: unknown): Promise<ReviewAnnotations> {
@@ -205,7 +205,7 @@ export class AssessmentsService {
     const data = validate(annotationsSchema, body);
     // Empty notes are dropped rather than stored.
     const notes = Object.fromEntries(Object.entries(data.notes).filter(([, text]) => text.trim() !== ''));
-    const value = { highlights: data.highlights, notes };
+    const value = { highlights: data.highlights, notes, drawings: data.drawings };
     const [row] = await this.db.query<{ updated_at: string }>(
       `INSERT INTO review_annotations (assessment_id, user_id, data) VALUES ($1, $2, $3::jsonb)
        ON CONFLICT (assessment_id, user_id) DO UPDATE SET data = EXCLUDED.data, updated_at = now() RETURNING updated_at`,

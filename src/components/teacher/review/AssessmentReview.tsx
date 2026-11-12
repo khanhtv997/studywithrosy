@@ -1,11 +1,22 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ArrowLeft, Check, CheckCircle2, Eye, EyeOff, Highlighter, Minus, Plus, StickyNote, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, Eraser, Eye, EyeOff, Highlighter, Minus, MousePointer2, PenLine, Plus, StickyNote, Trash2, Undo2, X } from 'lucide-react';
 import { eduApi } from '../../../api/client';
 import { formatInfo } from '../../../../shared/exercise-formats';
-import type { Assessment, HighlightColor, Question, ReviewAnnotations, ReviewHighlight } from '../../../types';
+import type { Assessment, DrawTool, HighlightColor, Question, ReviewAnnotations, ReviewHighlight, ReviewStroke } from '../../../types';
 import { useI18n } from '../../../i18n';
 import { addHighlight, segmentsOf, selectionBlocks } from './highlights';
+import { hitsStroke, MARKER_COLORS, newStrokeId, pathOf, PEN_COLORS, pushPoint, SIZES, type DrawMode } from './drawing';
 import './review.css';
+
+const DRAW_TOOLS: { value: DrawMode; label: string; icon: typeof PenLine }[] = [
+  { value: 'none', label: 'Chọn chữ', icon: MousePointer2 },
+  { value: 'pen', label: 'Bút', icon: PenLine },
+  { value: 'marker', label: 'Bút dạ', icon: Highlighter },
+  { value: 'eraser', label: 'Tẩy', icon: Eraser },
+];
+const SIZE_LABELS = ['Nét mảnh', 'Nét vừa', 'Nét đậm'];
+/** How many drawing steps "Hoàn tác" can go back. */
+const UNDO_DEPTH = 50;
 
 const COLORS: { value: HighlightColor; label: string }[] = [
   { value: 'yellow', label: 'Vàng' },
@@ -51,12 +62,23 @@ export function AssessmentReview({ assessment, onExit }: { assessment: Assessmen
   const [toolbar, setToolbar] = useState<Toolbar | null>(null);
   const [popover, setPopover] = useState<Popover | null>(null);
   const [color, setColor] = useState<HighlightColor>('yellow');
+  const [drawMode, setDrawMode] = useState<DrawMode>('none');
+  const [penColor, setPenColor] = useState(PEN_COLORS[0].value);
+  const [markerColor, setMarkerColor] = useState(MARKER_COLORS[0].value);
+  const [sizeIndex, setSizeIndex] = useState(1);
+  /** The stroke being drawn: its points grow in place and a frame tick redraws it. */
+  const live = useRef<{ stroke: ReviewStroke; origin: DOMRect } | null>(null);
+  const pointer = useRef<number | null>(null);
+  const [, setTick] = useState(0);
+  const frame = useRef(0);
+  const history = useRef<ReviewStroke[][]>([]);
+  const eraseStart = useRef<{ before: ReviewStroke[]; erased: boolean } | null>(null);
 
   // ---- load and auto-save ----
   useEffect(() => {
     let cancelled = false;
     eduApi.reviewAnnotations(assessment.id)
-      .then(result => { if (!cancelled) { setData({ highlights: result.highlights, notes: result.notes }); setLoaded(true); } })
+      .then(result => { if (!cancelled) { setData({ highlights: result.highlights, notes: result.notes, drawings: result.drawings ?? [] }); setLoaded(true); } })
       .catch(cause => { if (!cancelled) { setLoadError(cause instanceof Error ? cause.message : String(cause)); setLoaded(true); } });
     return () => { cancelled = true; };
   }, [assessment.id]);
@@ -111,9 +133,135 @@ export function AssessmentReview({ assessment, onExit }: { assessment: Assessmen
     if (withNote && lastAdded) setPopover({ id: (lastAdded as ReviewHighlight).id, x, y });
   };
 
+  // ---- free-hand drawing ----
+  const drawings = useMemo(() => data.drawings ?? [], [data.drawings]);
+  const remember = (snapshot: ReviewStroke[]) => { history.current = [...history.current.slice(-(UNDO_DEPTH - 1)), snapshot]; };
+
+  const chooseMode = (mode: DrawMode) => {
+    setDrawMode(mode);
+    setToolbar(null);
+    setPopover(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  /** The drawing layer of a block, whose corner is the origin of that block's strokes. */
+  const layerRect = (anchor: string) =>
+    root.current?.querySelector(`svg[data-draw-anchor="${CSS.escape(anchor)}"]`)?.getBoundingClientRect();
+
+  /** The innermost question, passage or heading under a point; the whole page when there is none. */
+  const anchorAt = (x: number, y: number) => {
+    for (const element of document.elementsFromPoint(x, y)) {
+      if (element.classList.contains('review-draw-capture')) continue;
+      const host = element.closest<HTMLElement>('[data-anchor]');
+      if (host && root.current?.contains(host)) return host.dataset.anchor!;
+    }
+    return 'root';
+  };
+
+  const eraseAt = (x: number, y: number) => {
+    const rects = new Map<string, DOMRect | undefined>();
+    const gone = new Set<string>();
+    for (const stroke of drawings) {
+      if (!rects.has(stroke.anchor)) rects.set(stroke.anchor, layerRect(stroke.anchor));
+      const rect = rects.get(stroke.anchor);
+      if (rect && hitsStroke(stroke, (x - rect.left) / scale, (y - rect.top) / scale, 8 / scale)) gone.add(stroke.id);
+    }
+    if (!gone.size) return;
+    if (eraseStart.current) eraseStart.current.erased = true;
+    update(prev => ({ ...prev, drawings: (prev.drawings ?? []).filter(s => !gone.has(s.id)) }));
+  };
+
+  const onDrawStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (pointer.current !== null || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    event.preventDefault();
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* the pointer already ended */ }
+    pointer.current = event.pointerId;
+    if (drawMode === 'eraser') {
+      eraseStart.current = { before: drawings, erased: false };
+      eraseAt(event.clientX, event.clientY);
+      return;
+    }
+    const anchor = anchorAt(event.clientX, event.clientY);
+    const origin = layerRect(anchor);
+    if (!origin || drawMode === 'none') { pointer.current = null; return; }
+    const tool: DrawTool = drawMode;
+    const stroke: ReviewStroke = { id: newStrokeId(), anchor, tool, color: tool === 'pen' ? penColor : markerColor, width: SIZES[tool][sizeIndex], points: [] };
+    pushPoint(stroke.points, (event.clientX - origin.left) / scale, (event.clientY - origin.top) / scale);
+    live.current = { stroke, origin };
+    setTick(n => n + 1);
+  };
+
+  const onDrawMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerId !== pointer.current) return;
+    if (eraseStart.current) { eraseAt(event.clientX, event.clientY); return; }
+    const current = live.current;
+    if (!current) return;
+    const events = event.nativeEvent.getCoalescedEvents?.() ?? [];
+    let changed = false;
+    for (const e of events.length ? events : [event.nativeEvent]) {
+      changed = pushPoint(current.stroke.points, (e.clientX - current.origin.left) / scale, (e.clientY - current.origin.top) / scale) || changed;
+    }
+    if (changed && !frame.current) frame.current = requestAnimationFrame(() => { frame.current = 0; setTick(n => n + 1); });
+  };
+
+  const onDrawEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerId !== pointer.current) return;
+    pointer.current = null;
+    if (eraseStart.current) {
+      if (eraseStart.current.erased) remember(eraseStart.current.before);
+      eraseStart.current = null;
+      return;
+    }
+    const current = live.current;
+    live.current = null;
+    if (!current) return;
+    const stroke = current.stroke;
+    remember(drawings);
+    update(prev => ({ ...prev, drawings: [...(prev.drawings ?? []), stroke] }));
+  };
+
+  const undo = useCallback(() => {
+    const last = history.current.pop();
+    if (!last) return false;
+    update(prev => ({ ...prev, drawings: last }));
+    return true;
+  }, [update]);
+
+  const clearDrawings = () => {
+    if (!window.confirm(t('Xoá tất cả {count} nét vẽ?', { count: drawings.length }))) return;
+    remember(drawings);
+    update(prev => ({ ...prev, drawings: [] }));
+  };
+
+  const strokesByAnchor = useMemo(() => {
+    const map = new Map<string, ReviewStroke[]>();
+    for (const s of drawings) map.set(s.anchor, [...(map.get(s.anchor) ?? []), s]);
+    return map;
+  }, [drawings]);
+
+  const layer = (anchor: string) => <DrawLayer anchor={anchor} strokes={strokesByAnchor.get(anchor)} scale={scale}
+    live={live.current?.stroke.anchor === anchor ? live.current.stroke : undefined} />;
+
+  useEffect(() => () => cancelAnimationFrame(frame.current), []);
+
+  // Ctrl+Z takes back the last drawing step (outside text boxes, which keep their own undo).
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z' || event.shiftKey) return;
+      if (event.target instanceof Element && event.target.closest('textarea, input, [contenteditable="true"]')) return;
+      if (undo()) event.preventDefault();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [undo]);
+
   // Close the floating panels on Escape, scrolling far, or a click elsewhere.
   useEffect(() => {
-    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') { setToolbar(null); setPopover(null); } };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setToolbar(null); setPopover(null);
+      if (!(event.target instanceof Element && event.target.closest('textarea, input'))) setDrawMode('none');
+    };
     const onDown = (event: PointerEvent) => {
       const target = event.target as HTMLElement;
       if (target.closest('.review-toolbar, .review-popover, mark.hl')) return;
@@ -169,22 +317,70 @@ export function AssessmentReview({ assessment, onExit }: { assessment: Assessmen
           {showAll ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}{showAll ? t('Ẩn tất cả đáp án') : t('Hiện tất cả đáp án')}
         </button>
       </div>
+
+      <div className="review-drawbar">
+        <div className="review-modes" role="group" aria-label={t('Công cụ')}>
+          {DRAW_TOOLS.map(tool => {
+            const Icon = tool.icon;
+            return <button key={tool.value} type="button" className={`review-mode ${drawMode === tool.value ? 'is-on' : ''}`} aria-pressed={drawMode === tool.value}
+              onClick={() => chooseMode(tool.value)} title={t(tool.label)}>
+              <Icon size={16} aria-hidden="true" /><span>{t(tool.label)}</span>
+            </button>;
+          })}
+        </div>
+
+        {(drawMode === 'pen' || drawMode === 'marker') && <>
+          <div className="review-palette-colors" role="group" aria-label={t('Màu bút')}>
+            {(drawMode === 'pen' ? PEN_COLORS : MARKER_COLORS).map(c => {
+              const current = (drawMode === 'pen' ? penColor : markerColor) === c.value;
+              return <button key={c.value} type="button" className={`review-pen-swatch ${current ? 'is-current' : ''}`} style={{ background: c.value }}
+                onClick={() => (drawMode === 'pen' ? setPenColor : setMarkerColor)(c.value)} aria-pressed={current} aria-label={t(c.label)} title={t(c.label)} />;
+            })}
+          </div>
+          <div className="review-sizes" role="group" aria-label={t('Cỡ nét')}>
+            {SIZES[drawMode].map((width, i) => <button key={i} type="button" className={`review-size ${sizeIndex === i ? 'is-on' : ''}`}
+              onClick={() => setSizeIndex(i)} aria-pressed={sizeIndex === i} aria-label={t(SIZE_LABELS[i])} title={t(SIZE_LABELS[i])}>
+              <span style={{ width: Math.min(22, Math.max(4, width * (drawMode === 'pen' ? 1.6 : 0.7))), height: Math.min(22, Math.max(4, width * (drawMode === 'pen' ? 1.6 : 0.7))), background: drawMode === 'pen' ? penColor : markerColor }} />
+            </button>)}
+          </div>
+        </>}
+
+        {drawMode !== 'none' && <div className="review-draw-actions">
+          <button type="button" className="review-tool" onClick={undo} disabled={!history.current.length} title={t('Hoàn tác (Ctrl+Z)')}>
+            <Undo2 size={15} aria-hidden="true" />{t('Hoàn tác')}
+          </button>
+          {drawings.length > 0 && <button type="button" className="review-tool review-tool-danger" onClick={clearDrawings}>
+            <Trash2 size={15} aria-hidden="true" />{t('Xoá nét vẽ')}
+          </button>}
+        </div>}
+      </div>
     </header>
 
     <div className="review-hint">
-      <Highlighter size={15} aria-hidden="true" />
-      {t('Bôi đen chữ để highlight hoặc ghi chú. Bấm vào chữ đã highlight để đổi màu, ghi chú hoặc xoá.')}
-      {highlightCount > 0 && <button type="button" className="review-clear" onClick={() => { if (window.confirm(t('Xoá tất cả {count} highlight?', { count: highlightCount }))) update(prev => ({ ...prev, highlights: [] })); }}>
-        {t('Xoá tất cả highlight')}
-      </button>}
+      {drawMode === 'none' ? <>
+        <Highlighter size={15} aria-hidden="true" />
+        {t('Bôi đen chữ để highlight hoặc ghi chú. Bấm vào chữ đã highlight để đổi màu, ghi chú hoặc xoá.')}
+        {highlightCount > 0 && <button type="button" className="review-clear" onClick={() => { if (window.confirm(t('Xoá tất cả {count} highlight?', { count: highlightCount }))) update(prev => ({ ...prev, highlights: [] })); }}>
+          {t('Xoá tất cả highlight')}
+        </button>}
+      </> : <>
+        {drawMode === 'eraser' ? <Eraser size={15} aria-hidden="true" /> : <PenLine size={15} aria-hidden="true" />}
+        {drawMode === 'eraser' ? t('Chạm hoặc kéo qua nét vẽ để xoá.') : t('Kéo chuột hoặc dùng bút cảm ứng để vẽ lên đề.')}
+        {' '}{t('Bấm "Chọn chữ" hoặc Esc để quay lại highlight.')}
+      </>}
     </div>
 
     {loadError && <p role="alert" className="form-error mx-auto mt-4 max-w-4xl">{loadError}</p>}
 
-    <div ref={root} className="review-content" style={{ '--review-scale': scale } as React.CSSProperties}
-      onMouseUp={() => setTimeout(readSelection, 0)} onKeyUp={() => setTimeout(readSelection, 0)} onTouchEnd={() => setTimeout(readSelection, 50)}>
+    <div ref={root} data-anchor="root" className={`review-content ${drawMode !== 'none' ? 'is-drawing' : ''}`} style={{ '--review-scale': scale } as React.CSSProperties}
+      onMouseUp={() => { if (drawMode === 'none') setTimeout(readSelection, 0); }} onKeyUp={() => setTimeout(readSelection, 0)}
+      onTouchEnd={() => { if (drawMode === 'none') setTimeout(readSelection, 50); }}>
+      {loaded && layer('root')}
+      {drawMode !== 'none' && <div className={`review-draw-capture is-${drawMode}`} aria-hidden="true"
+        onPointerDown={onDrawStart} onPointerMove={onDrawMove} onPointerUp={onDrawEnd} onPointerCancel={onDrawEnd} onLostPointerCapture={onDrawEnd} />}
       {!loaded ? <p className="review-loading">{t('Đang tải...')}</p> : groups.map(group => <section key={group.key} className="review-group">
-        {group.passage && <div className="review-passage">
+        {group.passage && <div className="review-passage" data-anchor={`p:${group.key}`}>
+          {layer(`p:${group.key}`)}
           <div className="review-passage-label">{t('Đoạn văn')}</div>
           <div className="review-passage-text">{text(`p:${group.key}`, group.passage)}</div>
           <NoteBox value={data.notes[`p:${group.key}`] ?? ''} onChange={value => setNote(`p:${group.key}`, value)} label={t('Ghi chú cho đoạn văn')} />
@@ -197,8 +393,9 @@ export function AssessmentReview({ assessment, onExit }: { assessment: Assessmen
           const open = isRevealed(q.id);
           const correctIndex = q.correctAnswer ? q.correctAnswer.trim().toUpperCase().charCodeAt(0) - 65 : -1;
           return <Fragment key={q.id}>
-            {showFormat && <div className="review-format"><strong>{t(info!.label)}</strong><span>{t(info!.instruction)}</span></div>}
-            <article className="review-question" aria-label={t('Câu {n}', { n: q.order })}>
+            {showFormat && <div className="review-format" data-anchor={`f:${q.id}`}>{layer(`f:${q.id}`)}<strong>{t(info!.label)}</strong><span>{t(info!.instruction)}</span></div>}
+            <article className="review-question" data-anchor={`q:${q.id}`} aria-label={t('Câu {n}', { n: q.order })}>
+              {layer(`q:${q.id}`)}
               <div className="review-question-head">
                 <span className="review-number">{q.order}</span>
                 <div className="review-question-text">{text(`q:${q.id}:text`, q.text)}</div>
@@ -244,6 +441,16 @@ export function AssessmentReview({ assessment, onExit }: { assessment: Assessmen
       onDelete={() => { update(prev => ({ ...prev, highlights: prev.highlights.filter(h => h.id !== active.id) })); setPopover(null); }}
       onClose={() => setPopover(null)} />}
   </div>;
+}
+
+/** The pen and marker strokes of one block, drawn over it and scaled with the text. */
+function DrawLayer({ anchor, strokes = [], live, scale }: { anchor: string; strokes?: ReviewStroke[]; live?: ReviewStroke; scale: number }) {
+  const all = live ? [...strokes, live] : strokes;
+  return <svg className="review-draw" data-draw-anchor={anchor} aria-hidden="true">
+    <g transform={`scale(${scale})`}>
+      {all.map(s => <path key={s.id} d={pathOf(s.points)} className={`review-stroke review-stroke-${s.tool}`} stroke={s.color} strokeWidth={s.width} />)}
+    </g>
+  </svg>;
 }
 
 /** A block of text with its highlights; the wrapper's text is exactly the block's plain text (offsets rely on it). */

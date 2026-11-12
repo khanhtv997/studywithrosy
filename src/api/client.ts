@@ -128,7 +128,7 @@ export const eduApi = {
   // Review screen: the user's own highlights and notes
   reviewAnnotations: (id: string) => apiRequest<ReviewAnnotations>(`assessments/${encodeURIComponent(id)}/annotations`),
   saveReviewAnnotations: (id: string, data: ReviewAnnotations) =>
-    apiRequest<ReviewAnnotations>(`assessments/${encodeURIComponent(id)}/annotations`, 'PUT', { highlights: data.highlights, notes: data.notes }),
+    apiRequest<ReviewAnnotations>(`assessments/${encodeURIComponent(id)}/annotations`, 'PUT', { highlights: data.highlights, notes: data.notes, drawings: data.drawings ?? [] }),
   // Sharing between teachers
   assessmentShares: (id: string) => apiRequest<AssessmentShareInfo>(`assessments/${encodeURIComponent(id)}/shares`),
   shareAssessment: (id: string, userIds: string[]) => apiRequest<AssessmentShareInfo>(`assessments/${encodeURIComponent(id)}/shares`, 'POST', { userIds }),
