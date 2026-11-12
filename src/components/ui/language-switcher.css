@@ -1,10 +1,10 @@
 /* ---------- Language switcher ---------- */
-.lang-switch { display: inline-flex; align-items: center; gap: 2px; height: 36px; padding: 3px; border: 1px solid #ede9e7; border-radius: 10px; background: #fcf9f8; }
-.lang-switch-icon { margin: 0 4px 0 6px; color: #a39894; }
-.lang-switch button { min-width: 34px; height: 28px; padding: 0 8px; border: 0; border-radius: 7px; color: #847772; background: transparent; font: inherit; font-size: 11.5px; font-weight: 800; letter-spacing: .03em; cursor: pointer; transition: background-color 150ms ease, color 150ms ease; }
-.lang-switch button:hover:not(.is-active) { color: #863a42; background: #f7f0ee; }
-.lang-switch button.is-active { color: #fff; background: var(--app-accent, #c05b65); }
+.lang-switch { display: inline-flex; align-items: center; gap: 2px; height: 36px; padding: 3px; border: 1px solid #e5e7ef; border-radius: 10px; background: #f8f9fc; }
+.lang-switch-icon { margin: 0 4px 0 6px; color: #8d93aa; }
+.lang-switch button { min-width: 34px; height: 28px; padding: 0 8px; border: 0; border-radius: 7px; color: #6b728b; background: transparent; font: inherit; font-size: 11.5px; font-weight: 800; letter-spacing: .03em; cursor: pointer; transition: background-color 150ms ease, color 150ms ease; }
+.lang-switch button:hover:not(.is-active) { color: #3f3a86; background: #eeedf8; }
+.lang-switch button.is-active { color: #fff; background: var(--app-accent, #625bc0); }
 @media (max-width: 520px) { .app-header-lang .lang-switch-icon { display: none; } }
 
-.lang-switch button:focus-visible { outline: 2px solid var(--app-accent, #c05b65); outline-offset: 2px; }
-.login-lang { position: fixed; z-index: 5; top: 16px; right: 16px; background: rgba(255, 255, 255, .92); box-shadow: 0 2px 8px rgba(49, 43, 41, .08); }
+.lang-switch button:focus-visible { outline: 2px solid var(--app-accent, #625bc0); outline-offset: 2px; }
+.login-lang { position: fixed; z-index: 5; top: 16px; right: 16px; background: rgba(255, 255, 255, .92); box-shadow: 0 2px 8px rgba(30, 32, 60, .08); }

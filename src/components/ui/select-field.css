@@ -6,11 +6,11 @@
   min-width: 0;
   min-height: 42px;
   padding: 9px 12px;
-  border: 1px solid #ebe5e2;
+  border: 1px solid #dfe2ee;
   border-radius: 11px;
-  color: #4f4542;
+  color: #33405e;
   background: #fff;
-  box-shadow: 0 1px 2px rgba(59, 51, 49, .035);
+  box-shadow: 0 1px 2px rgba(30, 38, 78, .035);
   font-family: inherit;
   font-size: 12px;
   font-weight: 650;
@@ -20,23 +20,23 @@
   transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
 }
 .app-select-trigger > span:first-child { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
-.app-select-trigger[data-placeholder] { color: #9b908c; }
-.app-select-trigger[data-state='open'] { border-color: #d7868e; box-shadow: 0 0 0 3px rgba(206, 109, 119, .14); }
+.app-select-trigger[data-placeholder] { color: #858ca2; }
+.app-select-trigger[data-state='open'] { border-color: #8e84d9; box-shadow: 0 0 0 3px rgba(121, 108, 207, .14); }
 .app-select-trigger[data-disabled] { opacity: .5; cursor: not-allowed; }
 .app-select-trigger.is-compact { min-height: 36px; padding: 6px 10px; border-radius: 9px; font-size: 11px; }
-.app-select-trigger:focus-visible { outline: 3px solid #e0a3aa; outline-offset: 2px; }
-.app-select-icon { display: grid; flex: none; place-items: center; color: #988b85; transition: transform 160ms cubic-bezier(.77, 0, .175, 1); }
+.app-select-trigger:focus-visible { outline: 3px solid #a99ce8; outline-offset: 2px; }
+.app-select-icon { display: grid; flex: none; place-items: center; color: #7d84a0; transition: transform 160ms cubic-bezier(.77, 0, .175, 1); }
 .app-select-trigger[data-state='open'] .app-select-icon { transform: rotate(180deg); }
-.app-select-content { z-index: 100; min-width: var(--radix-select-trigger-width); max-width: min(420px, calc(100vw - 24px)); max-height: min(320px, var(--radix-select-content-available-height)); overflow: hidden; border: 1px solid #ece8e6; border-radius: 13px; background: #fff; box-shadow: 0 14px 40px rgba(70, 61, 58, .16), 0 2px 8px rgba(70, 61, 58, .07); animation: app-select-enter 160ms cubic-bezier(.23, 1, .32, 1) both; }
+.app-select-content { z-index: 100; min-width: var(--radix-select-trigger-width); max-width: min(420px, calc(100vw - 24px)); max-height: min(320px, var(--radix-select-content-available-height)); overflow: hidden; border: 1px solid #e3e5ef; border-radius: 13px; background: #fff; box-shadow: 0 14px 40px rgba(37, 42, 91, .16), 0 2px 8px rgba(37, 42, 91, .07); animation: app-select-enter 160ms cubic-bezier(.23, 1, .32, 1) both; }
 .app-select-viewport { max-height: min(310px, var(--radix-select-content-available-height)); overflow-y: auto; padding: 5px; }
-.app-select-item { position: relative; display: flex; align-items: center; min-height: 38px; padding: 8px 34px 8px 11px; border-radius: 8px; color: #514846; font-size: 12px; line-height: 1.45; cursor: pointer; outline: none; user-select: none; overflow-wrap: anywhere; }
-.app-select-item[data-highlighted] { color: #af4a54; background: #fbf2ef; }
-.app-select-item[data-state='checked'] { color: #a8454f; font-weight: 750; }
+.app-select-item { position: relative; display: flex; align-items: center; min-height: 38px; padding: 8px 34px 8px 11px; border-radius: 8px; color: #39425e; font-size: 12px; line-height: 1.45; cursor: pointer; outline: none; user-select: none; overflow-wrap: anywhere; }
+.app-select-item[data-highlighted] { color: #534aaf; background: #f0eefc; }
+.app-select-item[data-state='checked'] { color: #5145a8; font-weight: 750; }
 .app-select-item[data-disabled] { opacity: .45; cursor: not-allowed; }
-.app-select-check { position: absolute; right: 10px; top: 50%; display: grid; place-items: center; transform: translateY(-50%); color: #c25a64; }
+.app-select-check { position: absolute; right: 10px; top: 50%; display: grid; place-items: center; transform: translateY(-50%); color: #655ac2; }
 @media (hover: hover) and (pointer: fine) {
-  .app-select-trigger:not([data-disabled]):hover { border-color: #e6b3b8; background: #fffcfb; }
-  .app-select-item:not([data-disabled]):hover { background: #fdf6f4; }
+  .app-select-trigger:not([data-disabled]):hover { border-color: #b7afe9; background: #fcfbff; }
+  .app-select-item:not([data-disabled]):hover { background: #f5f3fe; }
 }
 @keyframes app-select-enter { from { opacity: 0; transform: translateY(-5px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media (prefers-reduced-motion: reduce) {
