@@ -3,7 +3,7 @@ import type {
   AppUser, Assessment, ClassRoom, CreateAssessmentInput, CreateClassInput, CreateStudentInput,
   Role, Student, Submission, UpdateAssessmentInput,
 } from '../types';
-import { authToken, eduApi } from '../api/client';
+import { authToken, eduApi, SESSION_EXPIRED_EVENT, TOKEN_KEY } from '../api/client';
 
 interface AppContextType {
   currentUser: AppUser | null; userRole: Role | null;
@@ -69,6 +69,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       finally { setLoading(false); }
     };
     void restore();
+  }, []);
+
+  // Keep tabs in step: signing out (or in as someone else) in one tab applies to all of them,
+  // and a sign-in the server rejects sends this tab back to the login page.
+  useEffect(() => {
+    const signedOut = () => { setCurrentUser(null); clearData(); };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key !== TOKEN_KEY && event.key !== null) return;
+      if (!authToken.get()) signedOut();
+      else if (event.newValue && event.newValue !== event.oldValue) window.location.reload();
+    };
+    window.addEventListener(SESSION_EXPIRED_EVENT, signedOut);
+    window.addEventListener('storage', onStorage);
+    return () => { window.removeEventListener(SESSION_EXPIRED_EVENT, signedOut); window.removeEventListener('storage', onStorage); };
   }, []);
 
   const login = async (email: string, password: string) => {

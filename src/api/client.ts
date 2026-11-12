@@ -12,12 +12,28 @@ export interface BootstrapData {
   submissions: Submission[];
 }
 
-const TOKEN_KEY = 'eduassess_token';
+export const TOKEN_KEY = 'eduassess_token';
+/** Fired when the API rejects the saved sign-in (expired or revoked), so the app can show the login page. */
+export const SESSION_EXPIRED_EVENT = 'eduassess:session-expired';
 
+/**
+ * The sign-in token lives in localStorage so every tab and a reopened browser stay signed in until it
+ * expires (AUTH_TOKEN_TTL on the server, 7 days by default). Storage can be blocked (private mode,
+ * strict settings); then the token is kept for this page only.
+ */
+let memoryToken: string | null = null;
 export const authToken = {
-  get: () => sessionStorage.getItem(TOKEN_KEY),
-  set: (token: string) => sessionStorage.setItem(TOKEN_KEY, token),
-  clear: () => sessionStorage.removeItem(TOKEN_KEY),
+  get: () => {
+    try { return localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY); } catch { return memoryToken; }
+  },
+  set: (token: string) => {
+    memoryToken = token;
+    try { localStorage.setItem(TOKEN_KEY, token); sessionStorage.removeItem(TOKEN_KEY); } catch { /* memory only */ }
+  },
+  clear: () => {
+    memoryToken = null;
+    try { localStorage.removeItem(TOKEN_KEY); sessionStorage.removeItem(TOKEN_KEY); } catch { /* nothing stored */ }
+  },
 };
 
 export async function apiRequest<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
@@ -29,6 +45,11 @@ export async function apiRequest<T>(path: string, method = 'GET', body?: unknown
     signal,
   });
   const payload = await response.json().catch(() => null);
+  // A saved sign-in that the server no longer accepts: forget it and go back to the login page.
+  if (response.status === 401 && token && path !== 'auth/login') {
+    authToken.clear();
+    window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+  }
   if (!response.ok) {
     const message = payload?.message || payload?.error || `HTTP ${response.status}`;
     // Server messages are shown in the user's language (see src/i18n/vi-server.ts and en/core.ts).
