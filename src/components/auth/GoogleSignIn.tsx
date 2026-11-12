@@ -20,12 +20,12 @@ const SCRIPT_SRC = 'https://accounts.google.com/gsi/client';
 let scriptPromise: Promise<GoogleIdApi> | null = null;
 let configPromise: Promise<string | null> | null = null;
 
-/** Loads Google's sign-in script once. */
-function loadGoogle(): Promise<GoogleIdApi> {
+/** Loads Google's sign-in script once, in the app's language (hl), so its texts match the page. */
+function loadGoogle(lang: string): Promise<GoogleIdApi> {
   scriptPromise ??= new Promise<GoogleIdApi>((resolve, reject) => {
     if (window.google?.accounts?.id) { resolve(window.google.accounts.id); return; }
     const script = document.createElement('script');
-    script.src = SCRIPT_SRC;
+    script.src = `${SCRIPT_SRC}?hl=${lang}`;
     script.async = true;
     script.defer = true;
     script.onload = () => window.google?.accounts?.id ? resolve(window.google.accounts.id) : reject(new Error('Google sign-in did not load'));
@@ -45,10 +45,15 @@ let initializedFor: string | null = null;
 let onCredentialRef: (credential: string) => void = () => {};
 
 /**
- * Google's own "Continue with Google" button. Shows nothing when the server has no Google client ID.
- * The button is drawn by Google (their branding rules), in the app's language.
+ * Google's own button ("Đăng nhập bằng Google" / "Đăng ký bằng Google"). Shows nothing when the
+ * server has no Google client ID. The button is drawn by Google (their branding rules) in the app's
+ * language. FedCM is left off for the button: with it Chrome draws the sign-in in the browser's own
+ * language, which made the text switch between Vietnamese and English.
  */
-export function GoogleSignIn({ onCredential, onError, disabled, hint }: { onCredential: (credential: string) => void; onError: (message: string) => void; disabled?: boolean; hint?: string }) {
+export function GoogleSignIn({ onCredential, onError, disabled, hint, text = 'signin_with' }: {
+  onCredential: (credential: string) => void; onError: (message: string) => void; disabled?: boolean; hint?: string;
+  text?: 'signin_with' | 'signup_with' | 'continue_with';
+}) {
   const { lang, t } = useI18n();
   const box = useRef<HTMLDivElement>(null);
   const [clientId, setClientId] = useState<string | null | undefined>(undefined);
@@ -60,7 +65,8 @@ export function GoogleSignIn({ onCredential, onError, disabled, hint }: { onCred
   useEffect(() => {
     if (!clientId || !box.current) return;
     let alive = true;
-    loadGoogle().then(google => {
+    const locale = lang === 'en' ? 'en' : 'vi';
+    loadGoogle(locale).then(google => {
       if (!alive || !box.current) return;
       if (initializedFor !== clientId) {
         google.initialize({
@@ -69,21 +75,20 @@ export function GoogleSignIn({ onCredential, onError, disabled, hint }: { onCred
           ux_mode: 'popup',
           auto_select: false,
           cancel_on_tap_outside: true,
-          use_fedcm_for_button: true,
         });
         initializedFor = clientId;
       }
       box.current.replaceChildren();
       google.renderButton(box.current, {
-        type: 'standard', theme: 'outline', size: 'large', shape: 'pill', text: 'continue_with', logo_alignment: 'center',
+        type: 'standard', theme: 'outline', size: 'large', shape: 'pill', text, logo_alignment: 'center',
         width: Math.min(400, Math.max(220, Math.round(box.current.getBoundingClientRect().width) || 360)),
-        locale: lang === 'vi' ? 'vi' : 'en',
+        locale,
       });
     }).catch(() => { if (alive) { setFailed(true); onError(t('Không tải được nút đăng nhập Google. Hãy kiểm tra mạng và tải lại trang.')); } });
     return () => { alive = false; };
     // onError and t only change with the language, which is already a dependency.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, lang]);
+  }, [clientId, lang, text]);
 
   if (!clientId || failed) return null;
   return <div className="login-google">

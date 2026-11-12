@@ -102,7 +102,7 @@ export const LoginPage: React.FC<{ mode?: 'login' | 'register' }> = ({ mode = 'l
               : <button type="button" className="login-back" onClick={back}><ArrowLeft size={16} aria-hidden="true" />{t('Quay lại đăng nhập')}</button>}
           </div> : mode === 'register' ? <>
             <RegisterForm onSubmit={register} busy={busy} error={error} />
-            <GoogleSignIn onCredential={google} onError={setError} disabled={busy} hint={t('Hoặc đăng ký nhanh bằng tài khoản Google; số điện thoại và trường bổ sung sau.')} />
+            <GoogleSignIn onCredential={google} onError={setError} disabled={busy} text="signup_with" hint={t('Hoặc đăng ký nhanh bằng tài khoản Google; số điện thoại và trường bổ sung sau.')} />
             <p className="login-switch">{t('Đã có tài khoản?')} <Link to="/login">{t('Đăng nhập')}</Link></p>
           </> : <>
           <form onSubmit={submit} className="login-form">
