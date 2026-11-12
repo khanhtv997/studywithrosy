@@ -56,7 +56,7 @@ export function Sidebar({ mobileOpen, isDesktop, collapsed, onToggleCollapsed, o
           ? t('{className} đang chờ em khám phá.', { className: studentClass || t('Lớp của em') })
           : t('Tổ chức bài học, theo dõi tiến độ và đưa ra phản hồi kịp thời.')}</p>
       </div>
-      <DonateButton variant="sidebar" rail={rail} onOpen={onClose} />
+      <DonateButton rail={rail} onOpen={onClose} />
     </div>
     <div className="app-sidebar-bottom">
       {isDesktop ? (

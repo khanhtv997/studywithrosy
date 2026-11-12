@@ -7,16 +7,16 @@ import './donate.css';
 const QR_SRC = '/donate.jpg';
 
 /** "Buy me a coffee": a button that opens the bank transfer QR code. */
-export function DonateButton({ variant, rail = false, onOpen }: { variant: 'sidebar' | 'footer'; rail?: boolean; onOpen?: () => void }) {
+export function DonateButton({ rail = false, onOpen }: { rail?: boolean; onOpen?: () => void }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const label = t('Mời mình một ly cà phê');
   return <>
-    <button type="button" className={variant === 'sidebar' ? 'app-coffee' : 'app-footer-coffee'}
+    <button type="button" className="app-coffee"
       onClick={() => { onOpen?.(); setOpen(true); }}
       data-tooltip={rail ? label : undefined} aria-label={rail ? label : undefined}>
-      <Coffee size={variant === 'sidebar' ? 18 : 13} aria-hidden="true" />
-      <span className="app-nav-label">{variant === 'sidebar' ? label : 'Buy me a coffee'}</span>
+      <Coffee size={18} aria-hidden="true" />
+      <span className="app-nav-label">{label}</span>
     </button>
     {open && <DonateModal onClose={() => setOpen(false)} />}
   </>;
